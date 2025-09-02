@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>실내 길 안내 로봇</title>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#111827" />
+  <style>
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --card: #111827;      /* gray-900 */
+      --muted: #1f2937;     /* gray-800 */
+      --text: #e5e7eb;      /* gray-200 */
+      --accent: #3b82f6;    /* blue-500 */
+      --accent-2: #22c55e;  /* green-500 */
+      --danger: #ef4444;    /* red-500 */
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0); }
+    html, body { height: 100%; }
+    body {
+      margin: 0; padding: 0;
+      background: linear-gradient(180deg, #0b1020, #0f172a 35%, #0b1020);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Apple SD Gothic Neo, "맑은 고딕", sans-serif;
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    }
+
+    .wrap {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    header, footer {
+      padding: 12px 16px;
+      padding-top: max(12px, env(safe-area-inset-top));
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      display: flex; align-items: center; gap: 8px;
+      background: transparent;
+    }
+    header .title { font-size: 18px; font-weight: 700; letter-spacing: .3px; opacity: .95; }
+    .spacer { flex: 1; }
+
+    .btn {
+      appearance: none; border: 0; border-radius: 14px;
+      padding: 12px 16px; font-weight: 700; cursor: pointer;
+      background: var(--muted); color: var(--text);
+      min-height: 44px; font-size: 16px;
+      transition: transform .02s ease-in, background .2s ease;
+    }
+    .btn:hover { background: #283548; }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: var(--accent); color: white; }
+    .btn.success { background: var(--accent-2); color: #052e14; }
+    .btn.ghost { background: transparent; border: 1px solid #374151; }
+    .btn[disabled] { opacity: .5; cursor: wait; }
+
+    .page {
+      display: none;
+      padding: 16px;
+      max-width: 960px;
+      width: 100%;
+      margin: 0 auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .page.active { display: block; }
+
+    .hero { text-align: center; padding: 24px 16px 8px; }
+    .hero h1 { font-size: 26px; line-height: 1.2; margin: 4px 0 10px; }
+    .hero p { margin: 0; opacity: .8; }
+
+    .card {
+      background: radial-gradient(80% 80% at 20% 0%, #1b2240 0%, #121826 55%, #0b1020 100%);
+      border: 1px solid #1f2937; border-radius: 18px;
+      padding: 16px; margin-top: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    }
+
+    .grid { display: grid; gap: 10px; }
+    .grid.rooms { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (max-width: 380px) {
+      .grid.rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .room { padding: 8px; }
+      .room .num { font-size: 17px; }
+    }
+    @media (min-width: 540px) {
+      .grid.rooms { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @media (min-width: 900px) {
+      .grid.rooms { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    }
+
+    .room {
+      background: var(--card); border: 1px solid #1f2937;
+      border-radius: 16px; padding: 10px; text-align: center;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .room .num { font-weight: 800; font-size: 18px; letter-spacing: .3px; }
+    .room .btn { width: 100%; }
+
+    .toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    .search {
+      flex: 1; display: flex; align-items: center; gap: 8px;
+      background: var(--card); border: 1px solid #1f2937; border-radius: 12px; padding: 10px 12px;
+    }
+    .search input {
+      flex: 1; background: transparent; border: 0; outline: none; color: var(--text);
+      font-size: 16px;
+    }
+    .pill {
+      padding: 8px 12px; background: var(--muted); border-radius: 999px; font-weight: 700; font-size: 13px;
+      border: 1px solid #243042;
+    }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+      background: #0b1224; color: #dbeafe; border: 1px solid #1d3a70;
+      padding: 12px 16px; border-radius: 12px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.35);
+      opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+      max-width: calc(100% - 32px);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, -4px); }
+
+    .hidden { display: none !important; }
+    footer { font-size: 12px; opacity: .7; justify-content: center; }
+    @media (prefers-reduced-motion: reduce) {
+      .toast, .btn { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <button class="btn ghost" id="backBtn" onclick="goBack()" aria-label="뒤로">←</button>
+      <div class="title">실내 길 안내 로봇</div>
+      <div class="spacer"></div>
+      <button class="btn" onclick="goHome()">홈</button>
+    </header>
+
+    <!-- 메인 -->
+    <main id="page-home" class="page active">
+      <div class="hero">
+        <h1>안내를 시작할까요?</h1>
+        <p>층을 고르고, 이동할 호실을 선택하세요.</p>
+      </div>
+      <div class="card">
+        <div class="grid" style="grid-template-columns: repeat(3, minmax(0,1fr));">
+          <button class="btn primary" onclick="openFloor(1)">1층</button>
+          <button class="btn primary" onclick="openFloor(2)">2층</button>
+          <button class="btn primary" onclick="openFloor(3)">3층</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 층 선택 페이지 -->
+    <section id="page-floor" class="page">
+      <div class="toolbar">
+        <span id="floorTag" class="pill">1층</span>
+        <div class="search">
+          <input id="searchInput"
+                 type="text"
+                 inputmode="numeric"
+                 pattern="[0-9]*"
+                 autocapitalize="off"
+                 autocomplete="off"
+                 autocorrect="off"
+                 placeholder="호실 번호 검색 (예: 115)"
+                 oninput="filterRooms()" />
+          <button class="btn" onclick="clearSearch()">지우기</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="roomList" class="grid rooms"></div>
+      </div>
+    </section>
+
+    <footer>
+      <div>© 2025 Indoor Guide Robot – Navigation Demo</div>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    /* ============================
+       0) 백엔드 접속 설정 (실사용)
+       ============================ */
+    const BACKEND_URL = 'https://phases-eternal-katrina-eva.trycloudflare.com';
+; // ← 실제 고정 URL로 교체
+    const API_KEY = 'demo-token-123';                    // ← 백엔드와 동일 토큰
+
+    /* 상태 */
+    let currentFloor = 1;
+    let isBusy = false;
+
+    /* 페이지 전환 */
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      // 뒤로 버튼 표시/숨김
+      const backBtn = document.getElementById('backBtn');
+      backBtn.classList.toggle('hidden', id === 'page-home');
+    }
+    function goHome() { showPage('page-home'); }
+    function goBack() {
+      const isOnFloor = document.getElementById('page-floor').classList.contains('active');
+      if (isOnFloor) goHome();
+      else history.back();
+    }
+
+    /* 층 열기 */
+    function openFloor(floor) {
+      currentFloor = floor;
+      document.getElementById('floorTag').textContent = `${floor}층`;
+      buildRoomsForFloor(floor);
+      clearSearch(false);
+      showPage('page-floor');
+    }
+
+    /* 호실 범위: 1층 101~150, 2층 201~250, 3층 301~350 */
+    function buildRoomsForFloor(floor) {
+      const container = document.getElementById('roomList');
+      container.innerHTML = '';
+
+      let start = 0, end = 0;
+      if (floor === 1) { start = 101; end = 150; }
+      else if (floor === 2) { start = 201; end = 250; }
+      else if (floor === 3) { start = 301; end = 350; }
+      else {
+        container.innerHTML = '<div style="opacity:.7; padding:8px;">준비중인 층입니다.</div>';
+        return;
+      }
+
+      for (let n = start; n <= end; n++) {
+        const card = document.createElement('div');
+        card.className = 'room';
+        const num = document.createElement('div');
+        num.className = 'num';
+        num.textContent = `${n}호`;
+        const btn = document.createElement('button');
+        btn.className = 'btn success';
+        btn.textContent = '이 방으로 안내';
+        btn.addEventListener('click', () => selectRoom(n));
+        card.appendChild(num);
+        card.appendChild(btn);
+        container.appendChild(card);
+      }
+    }
+
+    /* 검색 필터 */
+    function filterRooms() {
+      const q = document.getElementById('searchInput').value.trim();
+      const rooms = document.querySelectorAll('#roomList .room');
+      rooms.forEach(r => {
+        const text = r.querySelector('.num').textContent.replace('호','');
+        const ok = !q || text.includes(q);
+        r.style.display = ok ? '' : 'none';
+      });
+    }
+    function clearSearch(focus = true) {
+      const el = document.getElementById('searchInput');
+      el.value = '';
+      filterRooms();
+      if (focus) el.focus();
+    }
+
+    /* 토스트 */
+    let toastTimer = null;
+    function showToast(msg, ms = 1600) {
+      const box = document.getElementById('toast');
+      box.textContent = msg;
+      box.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => box.classList.remove('show'), ms);
+    }
+
+    /* ============================
+       1) 네비게이션 호출 (실사용)
+       ============================ */
+    async function selectRoom(roomNumber) {
+      if (isBusy) return;
+      isBusy = true;
+
+      // UI 잠금
+      const buttons = document.querySelectorAll('#roomList .room .btn');
+      buttons.forEach(b => b.disabled = true);
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/navigate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': API_KEY
+          },
+          body: JSON.stringify({ room: roomNumber })
+        });
+
+        if (!res.ok) {
+          let details = '';
+          try { details = await res.text(); } catch {}
+          throw new Error(`HTTP ${res.status} ${details}`);
+        }
+
+        showToast(`${roomNumber}호로 안내를 시작합니다`);
+      } catch (e) {
+        console.error(e);
+        showToast('서버 연결 실패 😢');
+      } finally {
+        // UI 잠금 해제
+        buttons.forEach(b => b.disabled = false);
+        isBusy = false;
+      }
+    }
+
+    /* ============================
+       2) 초기화
+       ============================ */
+    document.addEventListener('DOMContentLoaded', () => {
+      showPage('page-home');
+      // 서비스워커 등록 (상대경로로 배포 호환)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(console.warn);
+      }
+    });
+  </script>
+</body>
+</html>
