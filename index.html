@@ -83,7 +83,7 @@
     @media (max-width: 380px) {
       .grid.rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .room { padding: 8px; }
-      .room .num { font-size: 17px; }
+      .room .num { font-size: 16px; }
     }
     @media (min-width: 540px) {
       .grid.rooms { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -97,7 +97,10 @@
       border-radius: 16px; padding: 10px; text-align: center;
       display: flex; flex-direction: column; gap: 8px;
     }
-    .room .num { font-weight: 800; font-size: 18px; letter-spacing: .3px; }
+    .room .num {
+      font-weight: 800; font-size: 17px; letter-spacing: .2px;
+      word-break: keep-all; line-height: 1.25;
+    }
 
     .toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
     .search {
@@ -161,12 +164,11 @@
         <div class="search">
           <input id="searchInput"
                  type="text"
-                 inputmode="numeric"
-                 pattern="[0-9]*"
+                 inputmode="search"
                  autocapitalize="off"
                  autocomplete="off"
                  autocorrect="off"
-                 placeholder="호실 번호 검색 (예: 115)"
+                 placeholder="호실 번호 또는 이름 검색 (예: 115, 회로설계)"
                  oninput="filterRooms()" />
           <button class="btn" onclick="clearSearch()">지우기</button>
         </div>
@@ -188,8 +190,121 @@
     const BACKEND_URL = 'https://phases-eternal-katrina-eva.trycloudflare.com';
     const API_KEY = 'demo-token-123';
 
+    // 층별 호실 → 이름 매핑
+    const ROOM_INFO = {
+      1: {
+        "101": "정보통신대학 학장실",
+        "102": "전자공학과 학과사무실",
+        "102-1": "스마트ICT융합공학과 학과사무실",
+        "103": "연구용실험실",
+        "105": "연구용 실험실",
+        "106": "해동학술정보실",
+        "110": "강의실",
+        "113": "강의실",
+        "114": "극한반도체 회로/소자 특성분석실",
+        "115": "강의실",
+        "116": "강의실",
+        "117": "강의실",
+        "119": "강의실",
+        "122": "연구용실험실",
+        "123": "강의실",
+        "124": "멘토링실",
+        "125": "공동동아리방",
+        "126": "안전공학과 학생회실",
+        "128": "전자공학과 학생회실",
+        "129": "정보통신대학 행정실",
+        "131": "외래교수실",
+        "132": "정보통신대학 학생센터",
+        "133": "연구용실험실",
+        "136": "연구용실험실",
+        "137": "연구용실험실"
+      },
+      2: {
+        "201": "전자공학과회의실",
+        "201-1": "전자공학과 교수휴게실",
+        "202": "신일훈 교수연구실",
+        "203": "이병한 교수연구실",
+        "204": "박형철 교수연구실",
+        "205": "권민우 교수연구실",
+        "206": "남재원 교수연구실",
+        "207": "실습준비실",
+        "208": "아날로그전자실험실습실",
+        "209": "마이크로프로세서연구실",
+        "210": "프로젝트실습실",
+        "211": "인공지능연구실",
+        "212": "NX연구실",
+        "212-1": "운영체제연구실",
+        "213": "반도체소자연구실",
+        "214": "회로설계연구실",
+        "215": "무선통신연구실",
+        "216": "종합설계(작업)실",
+        "217": "전자기수치해석연구실",
+        "218": "전자시뮬레이션실습실",
+        "219": "컴퓨터구조연구실",
+        "220": "컴퓨터구조연구실",
+        "221": "지능제어연구실",
+        "222": "컴퓨터실",
+        "223": "신호처리연구실",
+        "224": "최승호 교수연구실",
+        "225": "박민기 교수연구실",
+        "226": "도현락 교수연구실",
+        "227": "경연웅 교수연구실",
+        "228": "양성준 교수연구실",
+        "229": "이승은 교수연구실",
+        "230": "정태호 교수연구실",
+        "231": "이예훈 교수연구실",
+        "233": "유비쿼터스컴퓨팅연구실",
+        "233-1": "아날로그집적회로설계연구실",
+        "234": "유비쿼터스컴퓨팅연구실",
+        "235": "종합설계제작실"
+      },
+      3: {
+        "301": "김성권 교수연구실",
+        "302": "최현덕 교수연구실",
+        "304": "황병철 교수연구실",
+        "305": "이원영 교수연구실",
+        "306": "최의민 교수연구실",
+        "307": "김화정 교수연구실",
+        "308": "영상처리실험실",
+        "309-1": "연구용실험실",
+        "309-2": "연구용실험실",
+        "310": "교수회의실",
+        "311": "멀티미디어회로시스템실험실",
+        "312": "ICT회로계측실험실",
+        "313": "스마트미디어네트워크실험실",
+        "314": "스마트ICT융합공학과 학생회실",
+        "315": "기자재실",
+        "316": "협동적시스템소프트웨어연구실",
+        "317": "멀티미디어실험실",
+        "318": "전기전자회로실험실",
+        "319": "음향공학실",
+        "320": "ICT융합실험실",
+        "321": "머신러닝실험실",
+        "322": "실감미디어연구실",
+        "323": "미디어시뮬레이션실험실",
+        "324": "강의실",
+        "325": "강의실",
+        "326": "강의실",
+        "327": "서범준 교수연구실",
+        "328": "차병준 교수연구실",
+        "329": "이계민 교수연구실",
+        "330": "박구만 교수연구실",
+        "331": "허성연 교수연구실",
+        "332": "정현민 교수연구실",
+        "333": "박규태 교수연구실",
+        "334": "김동호 교수연구실",
+        "334-1": "호수에 오브레곤 교수연구실",
+        "335": "전력전자시스템실험실",
+        "335-1": "전력전자시스템실험실",
+        "336": "로봇지능 및 제어 연구실",
+        "337": "집적회로설계실험실",
+        "341": "ICT융합공학교육실",
+        "342": "ICT공학실험실습실",
+        "401": "정보통신대학 학생회실"
+      }
+    };
+
     let currentFloor = 1;
-    let isBusy = false;
 
     function showPage(id) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -212,6 +327,7 @@
       showPage('page-floor');
     }
 
+    // 숫자 범위 + 하이픈 호실까지 모두 카드 생성
     function buildRoomsForFloor(floor) {
       const container = document.getElementById('roomList');
       container.innerHTML = '';
@@ -225,23 +341,39 @@
         return;
       }
 
-      for (let n = start; n <= end; n++) {
-        const card = document.createElement('div');
-        card.className = 'room';
-        const num = document.createElement('div');
-        num.className = 'num';
-        num.textContent = `${n}호`;
-        card.appendChild(num);
-        container.appendChild(card);
-      }
+      // 숫자 방들
+      for (let n = start; n <= end; n++) addRoomCard(String(n), ROOM_INFO[floor]?.[String(n)]);
+
+      // 하이픈 방들(예: 102-1)
+      const extras = Object.keys(ROOM_INFO[floor] || {}).filter(k => k.includes('-'));
+      extras.sort((a,b)=> a.localeCompare(b, 'ko')).forEach(k => addRoomCard(k, ROOM_INFO[floor][k]));
+    }
+
+    function addRoomCard(code, label) {
+      const container = document.getElementById('roomList');
+      const card = document.createElement('div');
+      card.className = 'room';
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.textContent = label ? `${code}호(${label})` : `${code}호`;
+      // 클릭 시 토스트만 표시(백엔드 연동 전)
+      card.onclick = () => showToast(`${num.textContent} 선택됨`);
+      // 검색용 데이터 속성
+      if (label) card.dataset.label = label;
+      card.dataset.code = code;
+      card.appendChild(num);
+      container.appendChild(card);
     }
 
     function filterRooms() {
       const q = document.getElementById('searchInput').value.trim();
       const rooms = document.querySelectorAll('#roomList .room');
+      if (!q) { rooms.forEach(r => r.style.display = ''); return; }
+      const key = q.toLowerCase();
       rooms.forEach(r => {
-        const text = r.querySelector('.num').textContent.replace('호','');
-        const ok = !q || text.includes(q);
+        const code = (r.dataset.code || '').toLowerCase();
+        const label = (r.dataset.label || '').toLowerCase();
+        const ok = code.includes(key) || label.includes(key);
         r.style.display = ok ? '' : 'none';
       });
     }
