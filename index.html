@@ -7,15 +7,8 @@
   <meta name="theme-color" content="#ffffff" />
   <style>
     :root{
-      --bg:#ffffff;
-      --card:#ffffff;
-      --muted:#f3f4f6;
-      --text:#0f172a;
-      --subtle:#6b7280;
-      --border:#e5e7eb;
-      --accent:#2563eb;
-      --accent-2:#22c55e;
-      --ring:#60a5fa;
+      --bg:#ffffff; --card:#ffffff; --muted:#f3f4f6; --text:#0f172a; --subtle:#6b7280;
+      --border:#e5e7eb; --accent:#2563eb; --accent-2:#22c55e; --ring:#60a5fa;
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:rgba(0,0,0,0)}
     body{margin:0;padding:0;background:var(--bg);color:var(--text);
@@ -40,7 +33,7 @@
     .hero h1{font-size:30px;margin:10px 0 8px}
 
     .grid{display:grid;gap:10px}
-    .grid.rooms{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid.rooms{grid-template-columns:repeat(3,minmax(0, 1fr))}
     @media (max-width:380px){.grid.rooms{grid-template-columns:repeat(2,1fr)}}
     @media (min-width:540px){.grid.rooms{grid-template-columns:repeat(4,1fr)}}
     @media (min-width:900px){.grid.rooms{grid-template-columns:repeat(5,1fr)}}
@@ -205,7 +198,7 @@
     /***** 방 카드 구성 *****/
     function addRoomCard(code,label){
       const c=document.createElement('div'); c.className='room';
-      const num=document.createElement('div'); num.className='num'; num.textContent=`${code}호`; c.appendChild(num);
+      const num=document.createElement('div'); num.className='num'; num.textContent=code+'호'; c.appendChild(num);
       const lab=document.createElement('div'); lab.className='label'; lab.textContent=label||''; c.appendChild(lab);
       c.addEventListener('click', ()=>openConfirm(code,label));
       const box=document.getElementById('roomList'); if(box) box.appendChild(c);
@@ -213,7 +206,7 @@
     function buildRoomsForFloor(f){
       const box=document.getElementById('roomList'); if(!box) return;
       box.innerHTML='';
-      const [s,e]=RANGES[f];
+      const range=RANGES[f]||[0,-1]; const s=range[0], e=range[1];
       for(let n=s;n<=e;n++){
         const code=String(n);
         if(ROOM_INFO[f][code]) addRoomCard(code,ROOM_INFO[f][code]);
@@ -233,12 +226,12 @@
       });
     }
     function clearSearch(){ const i=$('#searchInput'); if(i){ i.value=''; filterRooms(); } }
-    function openFloor(f){ currentFloor=f; setActiveTab(f); const tag=$('#floorTag'); if(tag) tag.textContent=`${f}층`; buildRoomsForFloor(f); }
+    function openFloor(f){ currentFloor=f; setActiveTab(f); const tag=$('#floorTag'); if(tag) tag.textContent=f+'층'; buildRoomsForFloor(f); }
 
     /***** 확인 모달 *****/
     function openConfirm(code,label){
       pendingTarget={code,label};
-      const msg=$('#confirmMsg'); if(msg) msg.textContent=`${code}호 ${label?label:''} 로 안내할까요?`;
+      const msg=$('#confirmMsg'); if(msg) msg.textContent=code+'호 '+(label||'')+' 로 안내할까요?';
       $('#confirmWrap')?.classList.add('show');
     }
     function closeConfirm(){ $('#confirmWrap')?.classList.remove('show'); pendingTarget=null; }
@@ -272,7 +265,7 @@
 
       if(ok){
         activeRoom=target.code; guiding=true; paused=false;
-        const g=$('#goalText'); if(g) g.textContent=`${target.code}호 ${target.label?`(${target.label})`:''}`;
+        const g=$('#goalText'); if(g) g.textContent=target.code+'호'+(target.label?(' ('+target.label+')'):'');
         const s=$('#guideStatus'); if(s) s.textContent='안내 시작됨';
         const pb=$('#pauseBtn'); if(pb) pb.textContent='정지';
         showPage('page-guide');
@@ -317,12 +310,12 @@
       }
     }
 
-    /***** 도착 창 (문자열에 <script> 미사용) *****/
+    /***** 도착 창 (문자열에 <script> 미사용, 부모가 이벤트 연결) *****/
     function openArrivedWindow(){
-      const win=window.open("", "_blank");
-      if (!win) { alert("팝업 차단을 해제해주세요."); return; }
-      const html = "<!doctype html>\n"+
-"<!-- generated safely without <script> in content -->\n"+
+  const win = window.open("", "_blank");
+  if (!win) { alert("팝업 차단을 해제해주세요."); return; }
+
+  var html = "<!doctype html>\n"+
 "<html lang=\"ko\">\n"+
 "<head>\n"+
 "<meta charset=\"utf-8\">\n"+
@@ -347,27 +340,29 @@
 "  </div>\n"+
 "</body>\n"+
 "</html>";
-      win.document.open(); win.document.write(html); win.document.close();
 
-      // 부모 창에서 새 창의 버튼 이벤트 연결 (백엔드 연동 시 아래 fetch 활성화)
-      const btn = win.document.getElementById("returnBtn");
-      if(btn){
-        btn.addEventListener("click", async ()=>{
-          try{
-            if(!DEV_MOCK_PATH){
-              await fetch(BACKEND_URL.replace(/\/+$/,'') + "/api/return", {
-                method: "POST",
-                headers: { "x-api-key": API_KEY }
-              });
-            }
-            alert("복귀를 시작합니다.");
-            win.close();
-          }catch(e){
-            alert("복귀 요청 실패");
-          }
-        });
+  win.document.open(); win.document.write(html); win.document.close();
+
+  // 부모 창에서 새 창의 버튼 이벤트 연결 (알림 없이 홈으로 복귀)
+  const btn = win.document.getElementById("returnBtn");
+  if(btn){
+    btn.addEventListener("click", async ()=>{
+      try{
+        if(!DEV_MOCK_PATH){
+          await fetch(BACKEND_URL.replace(/\/+$/,'') + "/api/return", {
+            method: "POST",
+            headers: { "x-api-key": API_KEY }
+          });
+        }
+      }catch(e){
+        // 실패 시에도 일단 홈 복귀는 진행
+        console.error("return API failed", e);
       }
-    }
+      goHome();   // 부모 창: 홈으로 복귀
+      win.close(); // 도착 창 닫기 (추가 알림 없음)
+    });
+  }
+}
 
     /***** 지도(캔버스) *****/
     const mapEl=(function(){
@@ -375,8 +370,9 @@
       if(!c) return null;
       function resize(){
         const rect=c.getBoundingClientRect();
-        c.width=Math.max(1, Math.floor(rect.width*window.devicePixelRatio||1));
-        c.height=Math.max(1, Math.floor(rect.height*window.devicePixelRatio||1));
+        const dpr = window.devicePixelRatio || 1;
+        c.width=Math.max(1, Math.floor(rect.width*dpr));
+        c.height=Math.max(1, Math.floor(rect.height*dpr));
       }
       const ro=new ResizeObserver(()=>{ resize(); drawMap(lastStatus); });
       ro.observe(c); resize(); return c;
@@ -384,7 +380,7 @@
 
     function updateGuideUI(status){
       if(status?.current){ const t=$('#curPosText'); if(t) t.textContent = fmtXY(status.current); }
-      if(activeRoom){ const g=$('#goalText'); if(g) g.textContent = `${activeRoom}호${pendingTarget?.label?` (${pendingTarget.label})`:''}`; }
+      if(activeRoom){ const g=$('#goalText'); if(g) g.textContent = activeRoom+'호'+(pendingTarget?.label?(' ('+pendingTarget.label+')'):''); }
       const s=$('#guideStatus'); if(s) s.textContent = paused ? '일시 정지됨' : '안내중';
       drawMap(status);
     }
@@ -392,9 +388,10 @@
     function drawMap(status){
       if(!mapEl) return;
       const c=mapEl, ctx=c.getContext('2d');
-      ctx.save(); ctx.scale(window.devicePixelRatio||1, window.devicePixelRatio||1);
+      const dpr = window.devicePixelRatio || 1;
+      ctx.save(); ctx.scale(dpr, dpr);
       ctx.clearRect(0,0,c.width, c.height);
-      const W=c.width/(window.devicePixelRatio||1), H=c.height/(window.devicePixelRatio||1);
+      const W=c.width/dpr, H=c.height/dpr;
       ctx.fillStyle='#fafafa'; ctx.fillRect(0,0,W,H);
 
       if(!status || (!status.path && !status.current && !status.goal)){
@@ -410,7 +407,7 @@
       if(Array.isArray(status.goal)) pts.push(status.goal);
 
       let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-      pts.forEach(([x,y])=>{ if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; });
+      pts.forEach(function(v){ const x=v[0], y=v[1]; if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; });
       if(!isFinite(minX)){ minX=0;minY=0;maxX=10;maxY=10; }
 
       const pad=24;
@@ -418,7 +415,8 @@
       const sy=(H-2*pad)/Math.max(1e-6,(maxY-minY));
       const s=Math.min(sx,sy);
 
-      function toPix([x,y]){
+      function toPix(pt){
+        const x=pt[0], y=pt[1];
         const X = pad + (x-minX)*s;
         const Y = H - pad - (y-minY)*s; // 화면 좌표로 Y 반전
         return [X,Y];
@@ -427,20 +425,20 @@
       if(Array.isArray(status.path) && status.path.length>=2){
         ctx.lineWidth=3; ctx.strokeStyle='#22c55e';
         ctx.beginPath();
-        status.path.forEach((p,i)=>{ const [X,Y]=toPix(p); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
+        status.path.forEach(function(p,i){ const P=toPix(p); if(i===0) ctx.moveTo(P[0],P[1]); else ctx.lineTo(P[0],P[1]); });
         ctx.stroke();
       }
       if(Array.isArray(status.goal)){
-        const [gx,gy]=toPix(status.goal);
-        ctx.fillStyle='#2563eb'; ctx.beginPath(); ctx.arc(gx,gy,6,0,Math.PI*2); ctx.fill();
+        const G=toPix(status.goal);
+        ctx.fillStyle='#2563eb'; ctx.beginPath(); ctx.arc(G[0],G[1],6,0,Math.PI*2); ctx.fill();
       }
       if(Array.isArray(status.current)){
-        const [cx,cy]=toPix(status.current);
-        ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2); ctx.fill();
+        const C=toPix(status.current);
+        ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(C[0],C[1],6,0,Math.PI*2); ctx.fill();
       }
       ctx.restore();
     }
-    function fmtXY(p){ if(!Array.isArray(p)) return '-'; const [x=0,y=0]=p; return `${Number(x).toFixed(2)}, ${Number(y).toFixed(2)}`; }
+    function fmtXY(p){ if(!Array.isArray(p)) return '-'; const x=Number(p[0]||0), y=Number(p[1]||0); return x.toFixed(2)+", "+y.toFixed(2); }
 
     /***** 디버그 가짜 이동 *****/
     let _mockTimer=null;
@@ -456,7 +454,7 @@
       lastStatus={ arrived:false, room:roomCode, current:start.slice(), goal:goal.slice(), path };
       drawMap(lastStatus);
       const cur=$('#curPosText'); if(cur) cur.textContent=fmtXY(lastStatus.current);
-      const goalTxt=$('#goalText'); if(goalTxt) goalTxt.textContent=`${roomCode}호`;
+      const goalTxt=$('#goalText'); if(goalTxt) goalTxt.textContent=roomCode+'호';
       const stat=$('#guideStatus'); if(stat) stat.textContent='안내중';
 
       const ETA=Math.max(3, DEV_ETA_SEC|0);
