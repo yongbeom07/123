@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>실내 길 안내 로봇</title>
+  <title>실내 길안내 서비스</title>
   <meta name="theme-color" content="#ffffff" />
   <style>
     :root{
@@ -14,10 +14,31 @@
     body{margin:0;padding:0;background:var(--bg);color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Apple SD Gothic Neo,"맑은 고딕",sans-serif}
     .wrap{min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
-    header,footer{padding:12px 16px;display:flex;align-items:center;gap:8px;background:#ffffffcc;border-bottom:1px solid var(--border)}
-    footer{border-top:1px solid var(--border);justify-content:center;color:var(--subtle)}
-    header .title{font-size:18px;font-weight:700}
-    .spacer{flex:1}
+
+    /* footer는 그대로 flex */
+    footer{padding:12px 16px;display:flex;align-items:center;gap:8px;background:#ffffffcc;border-top:1px solid var(--border);justify-content:center;color:var(--subtle)}
+
+    /* ✅ 헤더를 3열 그리드로 바꿔 타이틀을 정확히 가운데 정렬 */
+    header{
+      padding:12px 16px;
+      background:#ffffffcc;
+      border-bottom:1px solid var(--border);
+      display:grid;
+      grid-template-columns:1fr auto 1fr; /* 좌 버튼 | 타이틀 | 우 버튼 */
+      align-items:center;
+      gap:8px;
+    }
+    header .title{
+      grid-column:2;
+      justify-self:center;
+      font-size:18px;
+      font-weight:700;
+    }
+    /* 기존 spacer는 사용하지 않음 */
+    .spacer{ display:none; }
+
+    /* 처음 화면에서는 뒤로가기/홈 버튼 숨김 */
+    .home-active #backBtn, .home-active #homeBtn { display:none; }
 
     .btn{border:1px solid var(--border);border-radius:14px;padding:12px 16px;font-weight:700;background:var(--muted);color:var(--text);min-height:44px;font-size:16px;cursor:pointer}
     .btn.primary{background:var(--accent);color:#fff}
@@ -30,8 +51,21 @@
     .page{display:none;padding:16px;max-width:980px;margin:0 auto}
     .page.active{display:block}
 
-    .hero{text-align:center;padding:28px 16px 10px}
-    .hero h1{font-size:30px;margin:10px 0 8px}
+    /* ✅ 홈 화면: 버튼을 가로세로 '진짜 중앙'으로 */
+    #page-home .hero{
+      min-height:calc(100dvh - 120px); /* 헤더/푸터 높이 감안 */
+      display:grid;
+      place-items:center;
+      text-align:center;
+      padding:0; /* 윗여백 제거 */
+    }
+    #page-home .hero h1{font-size:30px;margin:10px 0 20px}
+    /* ✅ 버튼 더 크게 */
+    #startBtn{
+      padding:18px 28px;
+      font-size:18px;
+      border-radius:16px;
+    }
 
     .grid{display:grid;gap:10px}
     .grid.rooms{grid-template-columns:repeat(3,minmax(0, 1fr))}
@@ -73,7 +107,7 @@
   <div class="wrap">
     <header>
       <button id="backBtn" class="btn ghost">←</button>
-      <div class="title">실내 길 안내 로봇</div>
+      <div class="title">실내 길안내 서비스</div>
       <div class="spacer"></div>
       <button id="homeBtn" class="btn">홈</button>
     </header>
@@ -81,9 +115,8 @@
     <!-- 홈 -->
     <main id="page-home" class="page active">
       <div class="hero">
-        <h1>실내 길 안내 서비스</h1>
-        <p>1QR 접속 → 층/호실 선택 → 로봇 안내</p>
-        <button id="startBtn" class="btn primary">안내 시작하기</button>
+        <h1>1실내 길안내 서비스</h1>
+        <button id="startBtn" class="btn primary">목적지선택</button>
       </div>
     </main>
 
@@ -150,13 +183,13 @@
     'use strict';
 
     /***** 실제 운영 모드 *****/
-    const DEV_FORCE_NAV = false;   // 실패 통과 금지
-    const DEV_MOCK_PATH = false;   // 가짜 경로/도착 금지
-    const DEV_ETA_SEC   = 0;       // 사용 안 함
+    const DEV_FORCE_NAV = false;
+    const DEV_MOCK_PATH = false;
+    const DEV_ETA_SEC   = 0;
 
     /***** 서버 접속 정보 (반드시 교체) *****/
-    const BACKEND_URL = "https://positions-maple-fantasy-repair.trycloudflare.com"; // ← Cloudflare Tunnel 등 실제 주소
-    const API_KEY     = "dev-secret";                    // ← 백엔드와 동일
+    const BACKEND_URL = "https://positions-maple-fantasy-repair.trycloudflare.com";
+    const API_KEY     = "dev-secret";
 
     /***** 호실/라벨 데이터 (정적; 백엔드와 좌표는 room_map.yaml로 관리) *****/
     const ROOM_INFO={
@@ -166,18 +199,18 @@
     };
     const RANGES={1:[101,137],2:[201,235],3:[301,342]};
 
-    /***** 상태 변수 *****/
     let currentFloor=1,pendingTarget=null;
     let guiding=false, paused=false, pollingTimer=null, activeRoom=null;
-    let lastStatus=null; // {arrived, current:[x,y], goal:[x,y], path:[[x,y],...]}
+    let lastStatus=null;
 
     const $ = (sel)=>document.querySelector(sel);
 
-    /***** 페이지 전환 *****/
     function showPage(id){
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       const el=document.getElementById(id);
       if(el) el.classList.add('active');
+      // 홈 화면 여부에 따라 헤더 버튼 숨김 클래스 토글
+      document.body.classList.toggle('home-active', id==='page-home');
     }
     function goHome(){
       stopPolling(); stopMock();
@@ -196,7 +229,6 @@
       });
     }
 
-    /***** 방 카드 (하이픈 방은 백엔드 room:int 제한으로 안내 비활성) *****/
     function addRoomCard(code,label){
       const c=document.createElement('div'); c.className='room';
       const num=document.createElement('div'); num.className='num'; num.textContent=code+'호'; c.appendChild(num);
@@ -235,7 +267,6 @@
     function clearSearch(){ const i=$('#searchInput'); if(i){ i.value=''; filterRooms(); } }
     function openFloor(f){ currentFloor=f; setActiveTab(f); const tag=$('#floorTag'); if(tag) tag.textContent=f+'층'; buildRoomsForFloor(f); }
 
-    /***** 확인 모달 *****/
     function openConfirm(code,label){
       pendingTarget={code,label};
       const msg=$('#confirmMsg'); if(msg) msg.textContent=code+'호 '+(label||'')+' 로 안내할까요?';
@@ -243,7 +274,6 @@
     }
     function closeConfirm(){ $('#confirmWrap')?.classList.remove('show'); pendingTarget=null; }
 
-    /***** API *****/
     async function api(path, method="GET", body=null){
       const url = BACKEND_URL.replace(/\/+$/,'') + path;
       const opt={ method, headers: { 'x-api-key': API_KEY } };
@@ -255,7 +285,6 @@
       return r.text();
     }
 
-    /***** 안내 시작 (실패 시 진행 금지) *****/
     async function confirmNavigate(){
       if(!pendingTarget) return;
       const yes=$('#confirmYes'), no=$('#confirmNo');
@@ -264,7 +293,7 @@
       const target=pendingTarget; closeConfirm();
 
       try{
-        await api('/api/navigate','POST',{ room: Number(target.code) }); // 백엔드 room:int
+        await api('/api/navigate','POST',{ room: Number(target.code) });
       }catch(e){
         alert('안내 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
         console.error(e);
@@ -279,17 +308,16 @@
       const s=$('#guideStatus'); if(s) s.textContent='안내 시작됨';
       const pb=$('#pauseBtn'); if(pb) pb.textContent='정지';
       showPage('page-guide');
-      startPolling(); // 실제 폴링만 사용
+      startPolling();
     }
 
-    /***** 일시정지/재개 & 종료 (stop/resume 매칭) *****/
     async function togglePause(){
       if(!guiding) return;
       const pb=$('#pauseBtn'), sb=$('#stopBtn');
       [pb,sb].forEach(b=>b && (b.disabled=true));
       try{
         if(!paused){
-          await api('/api/stop','POST'); // 일시정지(액션 취소 + 하드스톱)
+          await api('/api/stop','POST');
           paused=true; if(pb) pb.textContent='안내 재개';
           const s=$('#guideStatus'); if(s) s.textContent='일시 정지됨';
         } else {
@@ -313,7 +341,6 @@
       [pb,sb].forEach(b=>b && (b.disabled=false));
     }
 
-    /***** 폴링 (실서버) *****/
     function startPolling(){ stopPolling(); ensureMap().finally(()=>{ pollingTimer=window.setInterval(fetchStatus,1000); fetchStatus(); }); }
     function stopPolling(){ if(pollingTimer){ clearInterval(pollingTimer); pollingTimer=null; } }
     async function fetchStatus(){
@@ -327,7 +354,6 @@
       }
     }
 
-    /***** 도착 창 *****/
     function openArrivedWindow(){
       const win = window.open("", "_blank");
       if (!win) { alert("팝업 차단을 해제해주세요."); return; }
@@ -348,11 +374,11 @@
       "</style>\n"+
       "</head>\n"+
       "<body>\n"+
-      "  <div class=\"wrap\">\n"+
-      "    <div class=\"card\">\n"+
+      "  <div class=\\\"wrap\\\">\n"+
+      "    <div class=\\\"card\\\">\n"+
       "      <h1>목적지에 도착하였습니다</h1>\n"+
-      "      <div class=\"msg\">이용해 주셔서 감사합니다.</div>\n"+
-      "      <button class=\"btn\" id=\"returnBtn\">로봇 복귀</button>\n"+
+      "      <div class=\\\"msg\\\">이용해 주셔서 감사합니다.</div>\n"+
+      "      <button class=\\\"btn\\\" id=\\\"returnBtn\\\">로봇 복귀</button>\n"+
       "    </div>\n"+
       "  </div>\n"+
       "</body>\n"+
@@ -375,7 +401,6 @@
       }
     }
 
-    /***** 지도(캔버스) + 맵 오버레이 *****/
     const mapEl=(function(){
       const c=document.getElementById('mapCanvas');
       if(!c) return null;
@@ -393,7 +418,7 @@
     async function ensureMap(){
       if(_mapImg && _mapMeta) return;
       try{
-        _mapMeta = await api('/api/map/meta','GET'); // {width,height,resolution,origin:[ox,oy]}
+        _mapMeta = await api('/api/map/meta','GET');
         const url = BACKEND_URL.replace(/\/+$/,'') + '/api/map.png';
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -415,7 +440,7 @@
       const iw=_mapMeta.width, ih=_mapMeta.height;
       let px=(x - ox)/res;
       let py=(y - oy)/res;
-      py = (ih - 1) - py; // 상하반전
+      py = (ih - 1) - py;
       const {s,dx,dy}=_screenFit;
       const X = dx + px*s;
       const Y = dy + py*s;
@@ -481,7 +506,7 @@
         if(Array.isArray(status.path)) status.path.forEach(p=>Array.isArray(p)&&p.length===2&&pts.push(p));
         if(Array.isArray(status.current)) pts.push(status.current);
         if(Array.isArray(status.goal)) pts.push(status.goal);
-        let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+        let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=Infinity*-1;
         pts.forEach(function(v){ const x=v[0], y=v[1]; if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; });
         if(!isFinite(minX)){ minX=0;minY=0;maxX=10;maxY=10; }
         const pad=24;
@@ -496,12 +521,10 @@
     }
     function fmtXY(p){ if(!Array.isArray(p)) return '-'; const x=Number(p[0]||0), y=Number(p[1]||0); return x.toFixed(2)+", "+y.toFixed(2); }
 
-    /***** 디버그 가짜 이동(운영 비활성) *****/
     let _mockTimer=null;
-    function startMockRun(){ /* 운영 모드에선 사용 안 함 */ }
+    function startMockRun(){}
     function stopMock(){ if(_mockTimer){ clearInterval(_mockTimer); _mockTimer=null; } }
 
-    /***** 이벤트 바인딩 *****/
     document.addEventListener('DOMContentLoaded', ()=>{
       $('#homeBtn')?.addEventListener('click', goHome);
       $('#backBtn')?.addEventListener('click', goBack);
@@ -520,16 +543,10 @@
       $('#confirmNo')?.addEventListener('click', closeConfirm);
       $('#confirmYes')?.addEventListener('click', confirmNavigate);
 
+      // 최초 진입 시 홈 상태 클래스 부여
+      document.body.classList.add('home-active');
       showPage('page-home');
     });
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
