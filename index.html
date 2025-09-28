@@ -18,7 +18,7 @@
     /* footer는 그대로 flex */
     footer{padding:12px 16px;display:flex;align-items:center;gap:8px;background:#ffffffcc;border-top:1px solid var(--border);justify-content:center;color:var(--subtle)}
 
-    /* 헤더: 3열 그리드 (타이틀 가운데 고정) */
+    /* ✅ 헤더를 3열 그리드로 바꿔 타이틀을 정확히 가운데 정렬 */
     header{
       padding:12px 16px;
       background:#ffffffcc;
@@ -34,6 +34,7 @@
       font-size:18px;
       font-weight:700;
     }
+    /* 기존 spacer는 사용하지 않음 */
     .spacer{ display:none; }
 
     /* 처음 화면에서는 뒤로가기/홈 버튼 숨김 */
@@ -50,15 +51,16 @@
     .page{display:none;padding:16px;max-width:980px;margin:0 auto}
     .page.active{display:block}
 
-    /* 홈 화면 */
+    /* ✅ 홈 화면: 버튼을 가로세로 '진짜 중앙'으로 */
     #page-home .hero{
-      min-height:calc(100dvh - 120px);
+      min-height:calc(100dvh - 120px); /* 헤더/푸터 높이 감안 */
       display:grid;
       place-items:center;
       text-align:center;
-      padding:0;
+      padding:0; /* 윗여백 제거 */
     }
     #page-home .hero h1{font-size:30px;margin:10px 0 20px}
+    /* ✅ 버튼 더 크게 */
     #startBtn{
       padding:18px 28px;
       font-size:18px;
@@ -113,7 +115,7 @@
     <!-- 홈 -->
     <main id="page-home" class="page active">
       <div class="hero">
-        <h1>1어디로 안내할까요?</h1>
+        <h1>2어디로 안내할까요?</h1>
         <button id="startBtn" class="btn primary">목적지선택</button>
       </div>
     </main>
@@ -207,6 +209,7 @@
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       const el=document.getElementById(id);
       if(el) el.classList.add('active');
+      // 홈 화면 여부에 따라 헤더 버튼 숨김 클래스 토글
       document.body.classList.toggle('home-active', id==='page-home');
     }
     function goHome(){
@@ -351,45 +354,45 @@
       }
     }
 
-    /* ====== 깔끔 UI + 견고 복귀 버튼 버전 (팝업/모달 폴백) ====== */
-    function openArrivedWindow(){
-      // 팝업 시도
-      const win = window.open("", "_blank", "noopener,noreferrer,width=520,height=420");
-      const showInlineFallback = () => {
-        const wrap = document.getElementById("confirmWrap");
-        if(!wrap) { alert("목적지에 도착했습니다. (팝업 차단으로 인해 새 창을 띄울 수 없어 안내를 종료합니다.)"); return; }
-        document.getElementById("confirmTitle").textContent = "목적지에 도착하였습니다";
-        document.getElementById("confirmMsg").textContent = "이용해 주셔서 감사합니다.";
-        const yes = document.getElementById("confirmYes");
-        const no  = document.getElementById("confirmNo");
-        yes.textContent = "로봇 복귀";
-        no.textContent  = "닫기";
-        yes.onclick = async () => {
-          try{
-            const r = await fetch(BACKEND_URL.replace(/\/+$/,'') + "/api/return", {
-              method: "POST",
-              headers: { "x-api-key": API_KEY }
-            });
-            if(!r.ok){
-              const txt = await r.text().catch(()=> "");
-              alert("복귀 실패: " + r.status + " " + txt);
-              return;
-            }
-            goHome();
-          }catch(e){
-            alert("복귀 실패(네트워크): " + (e && e.message ? e.message : e));
-          }finally{
-            wrap.classList.remove("show");
-          }
-        };
-        no.onclick = () => wrap.classList.remove("show");
-        wrap.classList.add("show");
-      };
+   function openArrivedWindow(){
+  // 1) 팝업 시도
+  const win = window.open("", "_blank", "noopener,noreferrer,width=520,height=420");
+  const showInlineFallback = () => {
+    // 팝업이 막힌 경우: 같은 페이지에서 모달로 대체
+    const wrap = document.getElementById("confirmWrap");
+    if(!wrap) { alert("목적지에 도착했습니다. (팝업 차단으로 인해 새 창을 띄울 수 없어 안내를 종료합니다.)"); return; }
+    document.getElementById("confirmTitle").textContent = "목적지에 도착하였습니다";
+    document.getElementById("confirmMsg").textContent = "이용해 주셔서 감사합니다.";
+    const yes = document.getElementById("confirmYes");
+    const no  = document.getElementById("confirmNo");
+    yes.textContent = "로봇 복귀";
+    no.textContent  = "닫기";
+    yes.onclick = async () => {
+      try{
+        const r = await fetch(BACKEND_URL.replace(/\/+$/,'') + "/api/return", {
+          method: "POST",
+          headers: { "x-api-key": API_KEY }
+        });
+        if(!r.ok){
+          const txt = await r.text().catch(()=> "");
+          alert("복귀 실패: " + r.status + " " + txt);
+          return;
+        }
+        goHome();
+      }catch(e){
+        alert("복귀 실패(네트워크): " + (e && e.message ? e.message : e));
+      }finally{
+        wrap.classList.remove("show");
+      }
+    };
+    no.onclick = () => wrap.classList.remove("show");
+    wrap.classList.add("show");
+  };
 
-      if(!win){ showInlineFallback(); return; }
+  if(!win){ showInlineFallback(); return; }
 
-      // 팝업 HTML (메인 톤 맞춤)
-      const html = `<!doctype html>
+  // 2) 팝업 HTML (메인 톤 맞춤)
+  const html = `<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -439,6 +442,7 @@
     const statusEl = document.getElementById('statusText');
     const setStatus = (t)=>{ statusEl.textContent = t || ''; };
 
+    // opener 유효성 체크
     const openerOk = !!(window.opener && !window.opener.closed);
     if(!openerOk){
       setStatus("참고: 원래 창과의 연결이 없습니다. 복귀 후 수동으로 창을 닫아주세요.");
@@ -449,6 +453,7 @@
     document.getElementById('returnBtn').addEventListener('click', async ()=>{
       setStatus("복귀 명령 전송 중…");
       try{
+        // 부모창에서 상수 가져오기 (안 되면 실패 메시지)
         if(!openerOk || !window.opener.BACKEND_URL || !window.opener.API_KEY){
           setStatus("설정 취득 실패: 원래 창이 닫혔거나 권한이 없습니다.");
           return;
@@ -475,10 +480,25 @@
 </body>
 </html>`;
 
-      win.document.open(); win.document.write(html); win.document.close();
-      try { win.focus(); } catch(e){}
+  win.document.open(); win.document.write(html); win.document.close();
+  try { win.focus(); } catch(e){}
+}
+
+
+      const btn = win.document.getElementById("returnBtn");
+      if(btn){
+        btn.addEventListener("click", async ()=>{
+          try{
+            await fetch(BACKEND_URL.replace(/\/+$/,'') + "/api/return", {
+              method: "POST",
+              headers: { "x-api-key": API_KEY }
+            });
+          }catch(e){ console.error("return API failed", e); }
+          goHome();
+          win.close();
+        });
+      }
     }
-    /* ============================================================ */
 
     const mapEl=(function(){
       const c=document.getElementById('mapCanvas');
@@ -622,9 +642,18 @@
       $('#confirmNo')?.addEventListener('click', closeConfirm);
       $('#confirmYes')?.addEventListener('click', confirmNavigate);
 
+      // 최초 진입 시 홈 상태 클래스 부여
       document.body.classList.add('home-active');
       showPage('page-home');
     });
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
