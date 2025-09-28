@@ -15,14 +15,16 @@
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Apple SD Gothic Neo,"맑은 고딕",sans-serif}
     .wrap{min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
 
+    /* footer는 그대로 flex */
     footer{padding:12px 16px;display:flex;align-items:center;gap:8px;background:#ffffffcc;border-top:1px solid var(--border);justify-content:center;color:var(--subtle)}
 
+    /* ✅ 헤더를 3열 그리드로 바꿔 타이틀을 정확히 가운데 정렬 */
     header{
       padding:12px 16px;
       background:#ffffffcc;
       border-bottom:1px solid var(--border);
       display:grid;
-      grid-template-columns:1fr auto 1fr;
+      grid-template-columns:1fr auto 1fr; /* 좌 버튼 | 타이틀 | 우 버튼 */
       align-items:center;
       gap:8px;
     }
@@ -32,8 +34,10 @@
       font-size:18px;
       font-weight:700;
     }
+    /* 기존 spacer는 사용하지 않음 */
     .spacer{ display:none; }
 
+    /* 처음 화면에서는 뒤로가기/홈 버튼 숨김 */
     .home-active #backBtn, .home-active #homeBtn { display:none; }
 
     .btn{border:1px solid var(--border);border-radius:14px;padding:12px 16px;font-weight:700;background:var(--muted);color:var(--text);min-height:44px;font-size:16px;cursor:pointer}
@@ -47,15 +51,21 @@
     .page{display:none;padding:16px;max-width:980px;margin:0 auto}
     .page.active{display:block}
 
+    /* ✅ 홈 화면: 버튼을 가로세로 '진짜 중앙'으로 */
     #page-home .hero{
-      min-height:calc(100dvh - 120px);
+      min-height:calc(100dvh - 120px); /* 헤더/푸터 높이 감안 */
       display:grid;
       place-items:center;
       text-align:center;
-      padding:0;
+      padding:0; /* 윗여백 제거 */
     }
     #page-home .hero h1{font-size:30px;margin:10px 0 20px}
-    #startBtn{padding:18px 28px;font-size:18px;border-radius:16px}
+    /* ✅ 버튼 더 크게 */
+    #startBtn{
+      padding:18px 28px;
+      font-size:18px;
+      border-radius:16px;
+    }
 
     .grid{display:grid;gap:10px}
     .grid.rooms{grid-template-columns:repeat(3,minmax(0, 1fr))}
@@ -79,6 +89,7 @@
     .modal-backdrop.show{display:flex}
     .modal{background:#fff;padding:16px;border-radius:16px;width:min(92vw,420px)}
 
+    /* 안내중 페이지 */
     .guide-header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
     .guide-status{font-size:14px;color:var(--subtle)}
     .map-wrap{background:#fff;border:1px solid var(--border);border-radius:16px;padding:8px}
@@ -104,7 +115,7 @@
     <!-- 홈 -->
     <main id="page-home" class="page active">
       <div class="hero">
-        <h1>어디로 안내할까요?</h1>
+        <h1>1어디로 안내할까요?</h1>
         <button id="startBtn" class="btn primary">목적지선택</button>
       </div>
     </main>
@@ -198,6 +209,7 @@
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       const el=document.getElementById(id);
       if(el) el.classList.add('active');
+      // 홈 화면 여부에 따라 헤더 버튼 숨김 클래스 토글
       document.body.classList.toggle('home-active', id==='page-home');
     }
     function goHome(){
@@ -342,135 +354,51 @@
       }
     }
 
-    /* ====== 팝업 HTML에 </script>가 섞여도 안전한 버전 ====== */
     function openArrivedWindow(){
-      const win = window.open("", "_blank", "noopener,noreferrer,width=520,height=420");
-      const showInlineFallback = () => {
-        const wrap = document.getElementById("confirmWrap");
-        if(!wrap) { alert("목적지에 도착했습니다. (팝업 차단으로 새 창을 못 띄움)"); return; }
-        document.getElementById("confirmTitle").textContent = "목적지에 도착하였습니다";
-        document.getElementById("confirmMsg").textContent = "이용해 주셔서 감사합니다.";
-        const yes = document.getElementById("confirmYes");
-        const no  = document.getElementById("confirmNo");
-        yes.textContent = "로봇 복귀";
-        no.textContent  = "닫기";
-        yes.onclick = async () => {
+      const win = window.open("", "_blank");
+      if (!win) { alert("팝업 차단을 해제해주세요."); return; }
+
+      var html = "<!doctype html>\n"+
+      "<html lang=\"ko\">\n"+
+      "<head>\n"+
+      "<meta charset=\"utf-8\">\n"+
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"+
+      "<title>안내 완료</title>\n"+
+      "<style>\n"+
+      "  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,\\\"맑은 고딕\\\",sans-serif;margin:0;background:#fff;color:#111}\n"+
+      "  .wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}\n"+
+      "  .card{max-width:520px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.06)}\n"+
+      "  h1{margin:0 0 8px}\n"+
+      "  .msg{color:#374151}\n"+
+      "  .btn{margin-top:16px;padding:12px 18px;border-radius:12px;border:1px solid #e5e7eb;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}\n"+
+      "</style>\n"+
+      "</head>\n"+
+      "<body>\n"+
+      "  <div class=\\\"wrap\\\">\n"+
+      "    <div class=\\\"card\\\">\n"+
+      "      <h1>목적지에 도착하였습니다</h1>\n"+
+      "      <div class=\\\"msg\\\">이용해 주셔서 감사합니다.</div>\n"+
+      "      <button class=\\\"btn\\\" id=\\\"returnBtn\\\">로봇 복귀</button>\n"+
+      "    </div>\n"+
+      "  </div>\n"+
+      "</body>\n"+
+      "</html>";
+
+      win.document.open(); win.document.write(html); win.document.close();
+
+      const btn = win.document.getElementById("returnBtn");
+      if(btn){
+        btn.addEventListener("click", async ()=>{
           try{
-            const r = await fetch(BACKEND_URL.replace(/\/+$/,'') + "/api/return", {
+            await fetch(BACKEND_URL.replace(/\/+$/,'') + "/api/return", {
               method: "POST",
               headers: { "x-api-key": API_KEY }
             });
-            if(!r.ok){
-              const txt = await r.text().catch(()=> "");
-              alert("복귀 실패: " + r.status + " " + txt);
-              return;
-            }
-            goHome();
-          }catch(e){
-            alert("복귀 실패(네트워크): " + (e && e.message ? e.message : e));
-          }finally{
-            wrap.classList.remove("show");
-          }
-        };
-        no.onclick = () => wrap.classList.remove("show");
-        wrap.classList.add("show");
-      };
-
-      if(!win){ showInlineFallback(); return; }
-
-      // 1) 팝업 기본 HTML (스크립트는 뒤에서 동적 삽입)
-      const html = `<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>안내 완료</title>
-<style>
-  :root{
-    --bg:#ffffff; --card:#ffffff; --muted:#f3f4f6; --text:#0f172a; --subtle:#6b7280;
-    --border:#e5e7eb; --accent:#2563eb; --accent-2:#22c55e; --ring:#60a5fa;
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:rgba(0,0,0,0)}
-  body{
-    margin:0;background:var(--bg);color:var(--text);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Apple SD Gothic Neo,"맑은 고딕",sans-serif;
-  }
-  .wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}
-  .card{
-    width:min(92vw,520px);background:var(--card);
-    border:1px solid var(--border);border-radius:16px;padding:24px;
-    box-shadow:0 10px 30px rgba(2,6,23,.06);text-align:center;
-  }
-  h1{margin:0 0 6px;font-size:22px}
-  .msg{color:var(--subtle);margin-bottom:14px}
-  .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-  .btn{
-    border:1px solid var(--border);border-radius:12px;padding:12px 16px;
-    background:#fff;color:#000;font-weight:700;cursor:pointer;min-width:120px;
-  }
-  .btn.primary{background:var(--accent);color:#fff}
-  .status{margin-top:10px;font-size:13px;color:var(--subtle);min-height:18px}
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>목적지에 도착하였습니다</h1>
-      <div class="msg">이용해 주셔서 감사합니다.</div>
-      <div class="row">
-        <button id="returnBtn" class="btn primary">로봇 복귀</button>
-        <button id="closeBtn" class="btn">닫기</button>
-      </div>
-      <div id="statusText" class="status"></div>
-    </div>
-  </div>
-</body>
-</html>`;
-      win.document.open(); win.document.write(html); win.document.close();
-
-      // 2) 스크립트를 동적으로 삽입(</script> 파서 혼동 방지)
-      const s = win.document.createElement('script');
-      s.textContent = `
-        (function(){
-          const statusEl = document.getElementById('statusText');
-          const setStatus = (t)=>{ statusEl.textContent = t || ''; };
-
-          const openerOk = !!(window.opener && !window.opener.closed);
-          if(!openerOk){
-            setStatus("참고: 원래 창과의 연결이 없습니다. 복귀 후 수동으로 창을 닫아주세요.");
-          }
-
-          document.getElementById('closeBtn').addEventListener('click', ()=> window.close());
-
-          document.getElementById('returnBtn').addEventListener('click', async ()=>{
-            setStatus("복귀 명령 전송 중…");
-            try{
-              if(!openerOk || !window.opener.BACKEND_URL || !window.opener.API_KEY){
-                setStatus("설정 취득 실패: 원래 창이 닫혔거나 권한이 없습니다.");
-                return;
-              }
-              const url = window.opener.BACKEND_URL.replace(/\\/+$/,'') + "/api/return";
-              const r = await fetch(url, {
-                method: "POST",
-                headers: { "x-api-key": window.opener.API_KEY }
-              });
-              if(!r.ok){
-                const txt = await r.text().catch(()=> "");
-                setStatus("복귀 실패: " + r.status + " " + txt);
-                return;
-              }
-              setStatus("복귀 시작됨");
-              try { if(openerOk && window.opener.goHome) window.opener.goHome(); } catch(e){}
-              setTimeout(()=> window.close(), 400);
-            }catch(e){
-              setStatus("복귀 실패(네트워크): " + (e && e.message ? e.message : e));
-            }
-          });
-        })();
-      `;
-      win.document.body.appendChild(s);
-
-      try { win.focus(); } catch(e){}
+          }catch(e){ console.error("return API failed", e); }
+          goHome();
+          win.close();
+        });
+      }
     }
 
     const mapEl=(function(){
@@ -615,9 +543,18 @@
       $('#confirmNo')?.addEventListener('click', closeConfirm);
       $('#confirmYes')?.addEventListener('click', confirmNavigate);
 
+      // 최초 진입 시 홈 상태 클래스 부여
       document.body.classList.add('home-active');
       showPage('page-home');
     });
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
