@@ -54,13 +54,7 @@
       text-align:center;
       gap:8px;
     }
-    /* h1 제거 → 큰 문구용 스타일 추가 */
-    #page-home .hero .bigline{
-      font-size:30px;
-      font-weight:800;
-      line-height:1.2;
-      margin:0 0 6px;
-    }
+    #page-home .hero h1{font-size:30px;margin:0 0 8px}
     #page-home .hero .sub{color:#374151}
     #page-home .btn-row{
       display:grid;
@@ -132,9 +126,9 @@
     <main id="page-home" class="page active">
       <div class="hero">
         <div>
-          <!-- h1 제거, 동일 크기의 두 줄 문구로 대체 -->
-          <div class="bigline">로봇이 근처에 있다면 함께 출발해요</div>
-          <div class="bigline">멀리 있다면 로봇이 먼저 찾아갈게요</div>
+          <h1>어디로 안내할까요?</h1>
+          <div class="sub">자리에 로봇이 근처에 있다면 함께 출발해요</div>
+          <div class="sub">멀리 있다면 로봇이 먼저 찾아갈게요</div>
         </div>
         <div class="btn-row">
           <button id="btnTogether" class="btn primary">로봇과 함께 있어요</button>
