@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#ffffff" />
   <style>
     :root{
-      --bg:#ffffff; --card:#ffffff; --muted:#f3f4f6; --text:#0f172a; --subtle:#475569;
+      --bg:#ffffff; --card:#ffffff; --muted:#f3f4f6; --text:#0f172a; --subtle:#6b7280;
       --border:#e5e7eb; --accent:#2563eb; --accent-2:#22c55e; --ring:#60a5fa;
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:rgba(0,0,0,0)}
@@ -18,12 +18,22 @@
     footer{padding:12px 16px;display:flex;align-items:center;gap:8px;background:#ffffffcc;border-top:1px solid var(--border);justify-content:center;color:var(--subtle)}
 
     header{
-      padding:12px 16px;background:#ffffffcc;border-bottom:1px solid var(--border);
-      display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+      padding:12px 16px;
+      background:#ffffffcc;
+      border-bottom:1px solid var(--border);
+      display:grid;
+      grid-template-columns:1fr auto 1fr;
+      align-items:center;
+      gap:8px;
     }
-    header .title{grid-column:2;justify-self:center;font-size:18px;font-weight:700}
-    .spacer{display:none}
-    .home-active #backBtn,.home-active #homeBtn{display:none}
+    header .title{
+      grid-column:2;
+      justify-self:center;
+      font-size:18px;
+      font-weight:700;
+    }
+    .spacer{ display:none; }
+    .home-active #backBtn, .home-active #homeBtn { display:none; }
 
     .btn{border:1px solid var(--border);border-radius:14px;padding:12px 16px;font-weight:700;background:var(--muted);color:var(--text);min-height:44px;font-size:16px;cursor:pointer}
     .btn.primary{background:var(--accent);color:#fff}
@@ -37,12 +47,33 @@
     .page.active{display:block}
 
     /* 홈 */
-    #page-home .hero{min-height:calc(100dvh - 120px);display:grid;place-items:center;text-align:center;padding:0}
-    #page-home .hero h1{font-size:30px;margin:10px 0 20px}
-    #startBtn{padding:18px 28px;font-size:18px;border-radius:16px}
+    #page-home .hero{
+      min-height:calc(100dvh - 120px);
+      display:grid;
+      place-items:center;
+      text-align:center;
+      gap:8px;
+    }
+    /* h1 제거 → 큰 문구용 스타일 추가 */
+    #page-home .hero .bigline{
+      font-size:30px;
+      font-weight:800;
+      line-height:1.2;
+      margin:0 0 6px;
+    }
+    #page-home .hero .sub{color:#374151}
+    #page-home .btn-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      width:min(520px,92vw);
+      margin-top:12px;
+    }
+    #btnTogether{padding:18px 20px;font-size:18px;border-radius:16px}
+    #btnSummon{padding:18px 20px;font-size:18px;border-radius:16px;background:#fff}
 
     .grid{display:grid;gap:10px}
-    .grid.rooms{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid.rooms{grid-template-columns:repeat(3,minmax(0, 1fr))}
     @media (max-width:380px){.grid.rooms{grid-template-columns:repeat(2,1fr)}}
     @media (min-width:540px){.grid.rooms{grid-template-columns:repeat(4,1fr)}}
     @media (min-width:900px){.grid.rooms{grid-template-columns:repeat(5,1fr)}}
@@ -72,7 +103,20 @@
     .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:6px;font-size:13px;color:#374151}
     .legend .i{display:inline-flex;align-items:center;gap:6px}
     .dot{width:10px;height:10px;border-radius:50%}
-    .dot.cur{background:#111827}.dot.goal{background:#2563eb}.line-swatch{width:18px;height:3px;background:#22c55e;border-radius:2px}
+    .dot.cur{background:#111827}
+    .dot.goal{background:#2563eb}
+    .line-swatch{width:18px;height:3px;background:#22c55e;border-radius:2px}
+
+    /* 소환 페이지 */
+    #page-summon .center{
+      min-height:calc(100dvh - 160px);
+      display:grid;
+      place-items:center;
+      text-align:center;
+      gap:8px;
+    }
+    #page-summon h2{margin:0}
+    #page-summon .hint{color:#374151}
   </style>
 </head>
 <body>
@@ -87,10 +131,27 @@
     <!-- 홈 -->
     <main id="page-home" class="page active">
       <div class="hero">
-        <h1>어디로 안내할까요?</h1>
-        <button id="startBtn" class="btn primary">목적지선택</button>
+        <div>
+          <!-- h1 제거, 동일 크기의 두 줄 문구로 대체 -->
+          <div class="bigline">로봇이 근처에 있다면 함께 출발해요</div>
+          <div class="bigline">멀리 있다면 로봇이 먼저 찾아갈게요</div>
+        </div>
+        <div class="btn-row">
+          <button id="btnTogether" class="btn primary">로봇과 함께 있어요</button>
+          <button id="btnSummon" class="btn">로봇이 보이지 않아요</button>
+        </div>
       </div>
     </main>
+
+    <!-- 소환(복귀) 진행 화면 -->
+    <section id="page-summon" class="page">
+      <div class="center">
+        <div class="pill">소환중</div>
+        <h2>로봇이 열심히 가고 있어요…</h2>
+        <div class="hint" id="summonStatus">연결 대기중…</div>
+        <div class="hint">로봇이 도착하면 목적지를 선택할 수 있어요.</div>
+      </div>
+    </section>
 
     <!-- 층/호실 선택 -->
     <section id="page-floor" class="page">
@@ -109,17 +170,18 @@
       <div class="card"><div id="roomList" class="grid rooms"></div></div>
     </section>
 
-    <!-- 안내중 -->
+    <!-- 안내중 화면 -->
     <section id="page-guide" class="page">
       <div class="guide-header">
         <span class="pill">안내중</span>
         <div class="guide-status" id="guideStatus">연결 대기중…</div>
         <div class="spacer"></div>
       </div>
+
       <div class="card" style="text-align:center">
-        <div><strong>현재 위치:</strong> <span id="curPosText">-</span> &nbsp;|&nbsp;
-             <strong>목적지:</strong> <span id="goalText">-</span></div>
+        <div><strong>현재 위치:</strong> <span id="curPosText">-</span> &nbsp;|&nbsp; <strong>목적지:</strong> <span id="goalText">-</span></div>
       </div>
+
       <div class="map-wrap">
         <canvas id="mapCanvas"></canvas>
         <div class="legend">
@@ -128,9 +190,10 @@
           <span class="i"><span class="line-swatch"></span>경로</span>
         </div>
       </div>
+
       <div class="guide-controls">
         <button id="pauseBtn" class="btn">정지</button>
-        <button id="stopBtn" class="btn">안내 종료</button>
+        <button id="stopBtn" class="btn">목적지 변경</button>
       </div>
     </section>
 
@@ -152,53 +215,73 @@
   <script>
     'use strict';
 
-    /*** 서버 접속 정보 — 실제 값으로 교체 ***/
-    const BACKEND_URL = "https://removed-exceptions-holland-universal.trycloudflare.com"; // TODO: 실제 주소
-    const API_KEY     = "dev-secret"; // TODO: 실제 키
+    /***** 실제 운영 모드 *****/
+    const DEV_FORCE_NAV = false;
+    const DEV_MOCK_PATH = false;
+    const DEV_ETA_SEC   = 0;
 
-    /*** 데이터(라벨만; 좌표는 백엔드의 room_map.yaml) ***/
-    const ROOM_INFO={
+    /***** 서버 접속 정보 (반드시 교체) *****/
+    const BACKEND_URL = "https://enhance-smoking-roles-defined.trycloudflare.com";
+    const API_KEY     = "dev-secret";
+
+    /***** 상태 플래그 *****/
+    let currentFloor=1,pendingTarget=null;
+    let guiding=false, paused=false, pollingTimer=null, activeRoom=null;
+    let summoning=false; // ★ 소환(복귀 호출) 진행 여부
+    let lastStatus=null;
+
+    /***** 호실/라벨 데이터 (정적) *****/
+    const ROOM_INFO={ /* (생략 없이 원문과 동일) */ 
       1:{"101":"정보통신대학 학장실","102":"전자공학과 학과사무실","102-1":"스마트ICT융합공학과 학과사무실","103":"연구용실험실","104":"강의실","105":"연구용실험실","106":"해동학술정보실","107":"강의실","108":"강의실","109":"강의실","110":"강의실","111":"강의실","112":"강의실","113":"강의실","114":"극한반도체 회로/소자 특성분석실","115":"강의실","116":"강의실","117":"강의실","119":"강의실","120":"강의실","121":"강의실","122":"연구용실험실","123":"강의실","124":"멘토링실","125":"공동동아리방","126":"안전공학과 학생회실","127":"강의실","128":"전자공학과 학생회실","129":"정보통신대학 행정실","130":"강의실","131":"외래교수실","132":"정보통신대학 학생쉼터","133":"연구용실험실","134":"강의실","135":"강의실","136":"연구용실험실","137":"연구용실험실"},
       2:{"201":"전자공학과회의실","201-1":"전자공학과 교수휴게실","202":"신일훈 교수연구실","203":"이병한 교수연구실","204":"박형철 교수연구실","205":"권민우 교수연구실","206":"남재원 교수연구실","207":"실습준비실","207-1":"강의실","208":"아날로그전자실험실습실","209":"마이크로프로세서연구실","210":"프로젝트실습실","210-1":"강의실","211":"인공지능연구실","212":"NX연구실","212-1":"운영체제연구실","213":"반도체소자연구실","213-1":"강의실","214":"회로설계연구실","215":"무선통신연구실","216":"종합설계(작업)실","217":"전자기수치해석연구실","218":"전자시뮬레이션실험실습실","219":"컴퓨터구조연구실","220":"컴퓨터구조연구실","221":"지능제어연구실","222":"컴퓨터실","223":"신호처리연구실","223-1":"강의실","224":"최승호 교수연구실","225":"박민기 교수연구실","226":"도현락 교수연구실","227":"경연웅 교수연구실","228":"양성준 교수연구실","229":"이승은 교수연구실","230":"정태호 교수연구실","231":"이예훈 교수연구실","232":"강의실","233":"유비쿼터스컴퓨팅연구실","233-1":"아날로그집적회로설계연구실","234":"유비쿼터스컴퓨팅연구실","235":"종합설계제작실","236":"강의실"},
       3:{"301":"김성권 교수연구실","301-1":"강의실","302":"최현덕 교수연구실","303":"강의실","304":"황병철 교수연구실","305":"이원영 교수연구실","306":"최의민 교수연구실","307":"김화정 교수연구실","308":"영상처리실험실","308-1":"강의실","309":"강의실","309-1":"연구용실험실","309-2":"연구용실험실","310":"교수회의실","311":"멀티미디어회로시스템실험실","312":"ICT회로계측실험실","313":"스마트미디어네트워크실험실","314":"스마트ICT융합공학과 학생회실","315":"기자재실","316":"협동적시스템소프트웨어연구실","317":"멀티미디어실험실","318":"전기전자회로실험실","318-1":"강의실","319":"음향공학실","320":"ICT융합실험실","320-1":"강의실","321":"머신러닝실험실","322":"실감미디어연구실","323":"미디어시뮬레이션실험실","324":"강의실","325":"강의실","326":"강의실","327":"서범준 교수연구실","328":"차병준 교수연구실","329":"이계민 교수연구실","330":"박구만 교수연구실","331":"허성연 교수연구실","332":"정현민 교수연구실","333":"박규태 교수연구실","334":"김동호 교수연구실","334-1":"호수에 오브레곤 교수연구실","335":"전력전자시스템실험실","335-1":"전력전자시스템실험실","336":"로봇지능 및 제어 연구실","337":"집적회로설계실험실","338":"강의실","339":"강의실","340":"강의실","341":"ICT융합공학교육실","342":"ICT공학실험실습실"}
     };
     const RANGES={1:[101,137],2:[201,235],3:[301,342]};
 
-    let currentFloor=1, pendingTarget=null;
-    let guiding=false, paused=false, pollingTimer=null, activeRoom=null;
-    let lastStatus=null, arrivedPopupShown=false;
-
     const $ = (sel)=>document.querySelector(sel);
 
     function showPage(id){
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-      const el=document.getElementById(id); if(el) el.classList.add('active');
+      const el=document.getElementById(id);
+      if(el) el.classList.add('active');
       document.body.classList.toggle('home-active', id==='page-home');
     }
     function goHome(){
-      stopPolling();
-      guiding=false; paused=false; activeRoom=null; arrivedPopupShown=false;
+      stopPolling(); stopMock();
+      guiding=false; paused=false; activeRoom=null; summoning=false;
       setActiveTab(1); showPage('page-home');
     }
     function goBack(){
-      if($('#page-guide')?.classList.contains('active')){ showPage('page-floor'); return; }
-      if($('#page-floor')?.classList.contains('active')) goHome(); else showPage('page-home');
+      if($('#page-guide')?.classList.contains('active')){ showPage('page-floor'); return;}
+      if($('#page-floor')?.classList.contains('active')) goHome(); 
+      else if($('#page-summon')?.classList.contains('active')) goHome();
+      else showPage('page-home');
     }
-    function openFloor(f){ currentFloor=f; setActiveTab(f); const tag=$('#floorTag'); if(tag) tag.textContent=f+'층'; buildRoomsForFloor(f); }
+    function setActiveTab(f){
+      [1,2,3].forEach(x=>{
+        const el=document.getElementById(`tab-${x}`);
+        if(el) el.classList.toggle('active',x===f);
+      });
+    }
     function startGuide(){ openFloor(1); showPage('page-floor'); }
-    function setActiveTab(f){ [1,2,3].forEach(x=>{ const el=document.getElementById(`tab-${x}`); if(el) el.classList.toggle('active',x===f); }); }
+    function openFloor(f){ currentFloor=f; setActiveTab(f); const tag=$('#floorTag'); if(tag) tag.textContent=f+'층'; buildRoomsForFloor(f); }
 
     function addRoomCard(code,label){
       const c=document.createElement('div'); c.className='room';
-      c.innerHTML = `<div class="num">${code}호</div><div class="label">${label||''}</div>`;
+      const num=document.createElement('div'); num.className='num'; num.textContent=code+'호'; c.appendChild(num);
+      const lab=document.createElement('div'); lab.className='label'; lab.textContent=label||''; c.appendChild(lab);
       c.addEventListener('click', ()=>{
-        if(code.includes('-')){ alert('이 호실은 현재 안내 비활성입니다.'); return; }
+        if(code.includes('-')){
+          alert('이 호실은 현재 안내 비활성(백엔드 room:int). 필요시 백엔드를 room:str로 변경하세요.');
+          return;
+        }
         openConfirm(code,label);
       });
-      $('#roomList')?.appendChild(c);
+      const box=document.getElementById('roomList'); if(box) box.appendChild(c);
     }
     function buildRoomsForFloor(f){
-      const box=$('#roomList'); if(!box) return; box.innerHTML='';
+      const box=document.getElementById('roomList'); if(!box) return;
+      box.innerHTML='';
       const range=RANGES[f]||[0,-1]; const s=range[0], e=range[1];
       for(let n=s;n<=e;n++){
         const code=String(n);
@@ -207,8 +290,10 @@
       }
     }
     function filterRooms(){
-      const input=$('#searchInput'); const box=$('#roomList'); if(!input||!box) return;
-      const q=input.value.trim().toLowerCase(); box.innerHTML='';
+      const input=$('#searchInput'); const box=$('#roomList');
+      if(!input||!box) return;
+      const q=input.value.trim().toLowerCase();
+      box.innerHTML='';
       if(!q){ buildRoomsForFloor(currentFloor); return; }
       Object.values(ROOM_INFO).forEach(rooms=>{
         Object.entries(rooms).forEach(([code,label])=>{
@@ -232,61 +317,70 @@
       const r=await fetch(url, opt);
       if(!r.ok) throw new Error(method+" "+path+" failed: "+r.status);
       const ct=r.headers.get('content-type')||'';
-      return ct.includes('application/json') ? r.json() : r.text();
+      if(ct.includes('application/json')) return r.json();
+      return r.text();
     }
 
     async function confirmNavigate(){
       if(!pendingTarget) return;
-      const yes=$('#confirmYes'), no=$('#confirmNo'); [yes,no].forEach(b=>b && (b.disabled=true));
+      const yes=$('#confirmYes'), no=$('#confirmNo');
+      [yes,no].forEach(b=>b && (b.disabled=true));
+
       const target=pendingTarget; closeConfirm();
 
       try{
         await api('/api/navigate','POST',{ room: Number(target.code) });
       }catch(e){
-        console.error(e);
         alert('안내 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
+        console.error(e);
         [yes,no].forEach(b=>b && (b.disabled=false));
         return;
+      }finally{
+        [yes,no].forEach(b=>b && (b.disabled=false));
       }
-      activeRoom=target.code; guiding=true; paused=false; arrivedPopupShown=false;
-      $('#goalText').textContent = target.code+'호'+(target.label?(' ('+target.label+')'):'');
-      $('#guideStatus').textContent='안내 시작됨';
-      $('#pauseBtn').textContent='정지';
+
+      activeRoom=target.code; guiding=true; paused=false; summoning=false;
+      const g=$('#goalText'); if(g) g.textContent=target.code+'호'+(target.label?(' ('+target.label+')'):'');
+      const s=$('#guideStatus'); if(s) s.textContent='안내 시작됨';
+      const pb=$('#pauseBtn'); if(pb) pb.textContent='정지';
       showPage('page-guide');
       startPolling();
-      [yes,no].forEach(b=>b && (b.disabled=false));
     }
 
     async function togglePause(){
       if(!guiding) return;
-      const pb=$('#pauseBtn'), sb=$('#stopBtn'); [pb,sb].forEach(b=>b && (b.disabled=true));
+      const pb=$('#pauseBtn'), sb=$('#stopBtn');
+      [pb,sb].forEach(b=>b && (b.disabled=true));
       try{
         if(!paused){
           await api('/api/stop','POST');
-          paused=true; pb.textContent='안내 재개'; $('#guideStatus').textContent='일시 정지됨';
+          paused=true; if(pb) pb.textContent='안내 재개';
+          const s=$('#guideStatus'); if(s) s.textContent='일시 정지됨';
         } else {
           await api('/api/resume','POST');
-          paused=false; pb.textContent='정지'; $('#guideStatus').textContent='안내중';
+          paused=false; if(pb) pb.textContent='정지';
+          const s=$('#guideStatus'); if(s) s.textContent='안내중';
         }
       }catch(e){
-        alert('동작 실패: 연결 상태를 확인하세요.'); console.error(e);
+        alert('동작 실패: 연결 상태를 확인하세요.');
+        console.error(e);
       }finally{
         [pb,sb].forEach(b=>b && (b.disabled=false));
       }
     }
-
     async function stopGuide(){
-      const pb=$('#pauseBtn'), sb=$('#stopBtn'); [pb,sb].forEach(b=>b && (b.disabled=true));
+      const pb=$('#pauseBtn'), sb=$('#stopBtn');
+      [pb,sb].forEach(b=>b && (b.disabled=true));
       try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
-      guiding=false; paused=false; activeRoom=null; arrivedPopupShown=false;
-      stopPolling(); showPage('page-floor');
+      guiding=false; paused=false; activeRoom=null;
+      stopPolling(); stopMock(); showPage('page-floor');
       [pb,sb].forEach(b=>b && (b.disabled=false));
     }
 
     function startPolling(){
       stopPolling();
       ensureMap().finally(()=>{
-        pollingTimer=window.setInterval(fetchStatus, 1000);
+        pollingTimer=window.setInterval(fetchStatus,1000);
         fetchStatus();
       });
     }
@@ -296,92 +390,70 @@
       try{
         const status=await api('/api/status','GET');
         lastStatus=status;
-        updateGuideUI(status);
-        if(status && status.arrived && !arrivedPopupShown){
-          arrivedPopupShown=true;
+
+        // 소환중이면 소환 상태 텍스트 업데이트
+        if(summoning){
+          const t=$('#summonStatus');
+          if(t){
+            if(status?.current) t.textContent = '현재 위치: '+fmtXY(status.current);
+            else t.textContent = '연결 대기중…';
+          }
+        }
+
+        // 안내중 UI 갱신
+        if(guiding) updateGuideUI(status);
+
+        // 도착 처리
+        if(status && status.arrived){
           stopPolling();
-          openArrivedWindow();
+          if(summoning){
+            summoning=false;
+            // 소환 완료 → 목적지 선택
+            openFloor(1);
+            showPage('page-floor');
+          }else if(guiding){
+            openArrivedWindow();
+          }
         }
       }catch(e){
-        $('#guideStatus').textContent='연결 대기중…';
+        if(summoning){
+          const t=$('#summonStatus'); if(t) t.textContent='연결 대기중…';
+        }else{
+          const s=$('#guideStatus'); if(s) s.textContent='연결 대기중…';
+        }
       }
     }
 
-    /* ====== 도착 팝업(실사용) ====== */
+    // 도착 팝업 (안내중일 때만 사용; 소환중에는 사용 안 함)
     function openArrivedWindow(){
-      const destText = (typeof activeRoom!=='undefined' && activeRoom)
-        ? `${activeRoom}호${(pendingTarget?.label?` (${pendingTarget.label})`:'')}`
-        : '목적지';
-
       const win = window.open("", "_blank");
       if (!win) { alert("팝업 차단을 해제해주세요."); return; }
 
-      const html = `
-      <!doctype html>
-      <html lang="ko">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>안내 완료</title>
-        <style>
-          :root{
-            --bg1:#f8fafc; --bg2:#eef2ff; --text:#0f172a; --muted:#475569; --card:#fff;
-            --border:#e5e7eb; --accent:#2563eb; --accent-2:#22c55e; --ring:#60a5fa;
-          }
-          *{box-sizing:border-box} html,body{height:100%}
-          body{
-            margin:0; color:var(--text);
-            background:linear-gradient(180deg,var(--bg1),var(--bg2));
-            font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,"맑은 고딕",sans-serif;
-            display:grid; place-items:center;
-          }
-          .wrap{width:min(92vw,720px); padding:24px}
-          .card{
-            background:var(--card); border:1px solid var(--border); border-radius:24px;
-            padding:28px; text-align:center;
-            box-shadow:0 14px 45px rgba(2,6,23,.08), 0 3px 10px rgba(2,6,23,.06);
-            animation:pop .25s ease-out;
-          }
-          @keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
-          .badge{width:64px;height:64px;margin:8px auto 14px;border-radius:50%;display:grid;place-items:center;background:rgba(34,197,94,.12)}
-          .badge svg{width:34px;height:34px;stroke:var(--accent-2)}
-          h1{font-size:28px;line-height:1.2;margin:6px 0 6px;letter-spacing:-.02em}
-          .subtitle{color:var(--muted);font-size:16px;margin-bottom:18px}
-          .dest{display:inline-block;margin-top:4px;padding:6px 12px;border-radius:999px;background:#f1f5f9;font-weight:700}
-          .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
-          .btn{border:1px solid var(--border);background:#fff;color:var(--text);border-radius:14px;font-weight:700;padding:12px 18px;min-height:44px;cursor:pointer}
-          .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
-          .btn:focus{outline:2px solid var(--ring);outline-offset:2px}
-          .mini{margin-top:10px;font-size:12px;color:var(--muted)}
-        </style>
-      </head>
-      <body>
-        <div class="wrap">
-          <div class="card" role="dialog" aria-modal="true" aria-labelledby="t" aria-describedby="d">
-            <div class="badge" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
-                <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </div>
-            <h1 id="t">목적지에 도착하였습니다</h1>
-            <div id="d" class="subtitle">이용해 주셔서 감사합니다.</div>
-            <div class="dest">${destText}</div>
-            <div class="btns">
-              <button id="returnBtn" class="btn primary">로봇 복귀</button>
-              <button id="closeBtn" class="btn">닫기</button>
-            </div>
-            <div class="mini">팝업이 자동으로 닫히지 않으면 “닫기” 버튼을 눌러주세요.</div>
-          </div>
-        </div>
-        <script>
-          const returnBtn=document.getElementById('returnBtn');
-          const closeBtn=document.getElementById('closeBtn');
-          returnBtn?.focus();
-          window.addEventListener('keydown',e=>{ if(e.key==='Escape') window.close(); if(e.key==='Enter'&&document.activeElement===returnBtn) returnBtn.click(); });
-          closeBtn?.addEventListener('click',()=>window.close());
-        <\/script>
-      </body>
-      </html>`;
+      var html = "<!doctype html>\n"+
+      "<html lang=\"ko\">\n"+
+      "<head>\n"+
+      "<meta charset=\"utf-8\">\n"+
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"+
+      "<title>안내 완료</title>\n"+
+      "<style>\n"+
+      "  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,\\\"맑은 고딕\\\",sans-serif;margin:0;background:#fff;color:#111}\n"+
+      "  .wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}\n"+
+      "  .card{max-width:520px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.06)}\n"+
+      "  h1{margin:0 0 8px}\n"+
+      "  .msg{color:#374151}\n"+
+      "  .btn{margin-top:16px;padding:12px 18px;border-radius:12px;border:1px solid #e5e7eb;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}\n"+
+      "</style>\n"+
+      "</head>\n"+
+      "<body>\n"+
+      "  <div class=\\\"wrap\\\">\n"+
+      "    <div class=\\\"card\\\">\n"+
+      "      <h1>목적지에 도착하였습니다</h1>\n"+
+      "      <div class=\\\"msg\\\">이용해 주셔서 감사합니다.</div>\n"+
+      "      <button class=\\\"btn\\\" id=\\\"returnBtn\\\">로봇 복귀</button>\n"+
+      "    </div>\n"+
+      "  </div>\n"+
+      "</body>\n"+
+      "</html>";
 
       win.document.open(); win.document.write(html); win.document.close();
 
@@ -400,66 +472,88 @@
       }
     }
 
-    /* ===== 지도 로딩/그리기 ===== */
+    /***** 지도 렌더링 *****/
     const mapEl=(function(){
-      const c=document.getElementById('mapCanvas'); if(!c) return null;
-      function resize(){ const rect=c.getBoundingClientRect(); const dpr=window.devicePixelRatio||1;
-        c.width=Math.max(1,Math.floor(rect.width*dpr)); c.height=Math.max(1,Math.floor(rect.height*dpr)); }
-      const ro=new ResizeObserver(()=>{ resize(); drawMap(lastStatus); }); ro.observe(c); resize(); return c;
+      const c=document.getElementById('mapCanvas');
+      if(!c) return null;
+      function resize(){
+        const rect=c.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        c.width=Math.max(1, Math.floor(rect.width*dpr));
+        c.height=Math.max(1, Math.floor(rect.height*dpr));
+      }
+      const ro=new ResizeObserver(()=>{ resize(); drawMap(lastStatus); });
+      ro.observe(c); resize(); return c;
     })();
-    let _mapImg=null, _mapMeta=null, _screenFit=null;
 
+    let _mapImg=null, _mapMeta=null, _screenFit=null;
     async function ensureMap(){
       if(_mapImg && _mapMeta) return;
       try{
         _mapMeta = await api('/api/map/meta','GET');
         const url = BACKEND_URL.replace(/\/+$/,'') + '/api/map.png';
-        const img = new Image(); img.crossOrigin='anonymous';
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
         await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=url; });
         _mapImg = img;
       }catch(e){ console.warn('map load failed', e); }
     }
 
-    function computeScreenFit(W,H,iw,ih){ const s=Math.min(W/iw,H/ih); return {s,dx:(W-iw*s)/2,dy:(H-ih*s)/2}; }
+    function computeScreenFit(W,H,iw,ih){
+      const s=Math.min(W/iw, H/ih);
+      const dx=(W - iw*s)/2, dy=(H - ih*s)/2;
+      return {s,dx,dy};
+    }
     function worldToScreen(pt){
       if(!_mapMeta || !_screenFit) return null;
-      const [x,y]=pt, res=_mapMeta.resolution, ox=_mapMeta.origin[0], oy=_mapMeta.origin[1], iw=_mapMeta.width, ih=_mapMeta.height;
-      let px=(x-ox)/res, py=(y-oy)/res; py=(ih-1)-py;
-      const {s,dx,dy}=_screenFit; return [dx+px*s, dy+py*s];
+      const [x,y]=pt;
+      const res=_mapMeta.resolution;
+      const ox=_mapMeta.origin[0], oy=_mapMeta.origin[1];
+      const iw=_mapMeta.width, ih=_mapMeta.height;
+      let px=(x - ox)/res;
+      let py=(y - oy)/res;
+      py = (ih - 1) - py;
+      const {s,dx,dy}=_screenFit;
+      const X = dx + px*s;
+      const Y = dy + py*s;
+      return [X,Y];
     }
 
     function updateGuideUI(status){
-      if(status?.current){ $('#curPosText').textContent = fmtXY(status.current); }
-      if(activeRoom){ $('#goalText').textContent = activeRoom+'호'+(pendingTarget?.label?(' ('+pendingTarget.label+')'):''); }
-      $('#guideStatus').textContent = paused ? '일시 정지됨' : '안내중';
+      if(status?.current){ const t=$('#curPosText'); if(t) t.textContent = fmtXY(status.current); }
+      if(activeRoom){ const g=$('#goalText'); if(g) g.textContent = activeRoom+'호'+(pendingTarget?.label?(' ('+pendingTarget.label+')'):''); }
+      const s=$('#guideStatus'); if(s) s.textContent = paused ? '일시 정지됨' : '안내중';
       drawMap(status);
     }
 
     function drawMap(status){
       if(!mapEl) return;
-      const c=mapEl, ctx=c.getContext('2d'); const dpr=window.devicePixelRatio||1;
-      ctx.save(); ctx.scale(dpr,dpr); ctx.clearRect(0,0,c.width,c.height);
+      const c=mapEl, ctx=c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      ctx.save(); ctx.scale(dpr, dpr);
+      ctx.clearRect(0,0,c.width, c.height);
       const W=c.width/dpr, H=c.height/dpr;
 
       if(_mapImg && _mapMeta){
-        _screenFit=computeScreenFit(W,H,_mapImg.width,_mapImg.height);
+        _screenFit = computeScreenFit(W,H,_mapImg.width,_mapImg.height);
         const {s,dx,dy}=_screenFit;
-        ctx.drawImage(_mapImg,dx,dy,_mapImg.width*s,_mapImg.height*s);
-      } else {
+        ctx.drawImage(_mapImg, dx, dy, _mapImg.width*s, _mapImg.height*s);
+      }else{
         ctx.fillStyle='#fafafa'; ctx.fillRect(0,0,W,H);
       }
 
       if(!status || (!status.path && !status.current && !status.goal)){
-        ctx.fillStyle='#9ca3af'; ctx.font='14px system-ui,-apple-system,Segoe UI,Roboto';
-        ctx.textAlign='center'; ctx.fillText('연결 대기중…', W/2, H/2);
+        ctx.fillStyle='#9ca3af'; ctx.font='14px system-ui, -apple-system, Segoe UI, Roboto';
+        ctx.textAlign='center';
+        ctx.fillText('연결 대기중… (경로/좌표 수신 시 자동 표시)', W/2, H/2);
         ctx.restore(); return;
       }
 
       if(Array.isArray(status.path) && status.path.length>=2){
         ctx.lineWidth=3; ctx.strokeStyle='#22c55e';
         ctx.beginPath();
-        status.path.forEach((p,i)=>{
-          const P=worldToScreen(p) || relToScreen(p);
+        status.path.forEach(function(p,i){
+          const P = worldToScreen(p) || relToScreen(p);
           if(!P) return;
           if(i===0) ctx.moveTo(P[0],P[1]); else ctx.lineTo(P[0],P[1]);
         });
@@ -467,13 +561,15 @@
       }
 
       if(Array.isArray(status.goal)){
-        const G=worldToScreen(status.goal) || relToScreen(status.goal);
+        const G = worldToScreen(status.goal) || relToScreen(status.goal);
         if(G){ ctx.fillStyle='#2563eb'; ctx.beginPath(); ctx.arc(G[0],G[1],6,0,Math.PI*2); ctx.fill(); }
       }
+
       if(Array.isArray(status.current)){
-        const C=worldToScreen(status.current) || relToScreen(status.current);
+        const C = worldToScreen(status.current) || relToScreen(status.current);
         if(C){ ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(C[0],C[1],6,0,Math.PI*2); ctx.fill(); }
       }
+
       ctx.restore();
 
       function relToScreen(pt){
@@ -482,43 +578,69 @@
         if(Array.isArray(status.path)) status.path.forEach(p=>Array.isArray(p)&&p.length===2&&pts.push(p));
         if(Array.isArray(status.current)) pts.push(status.current);
         if(Array.isArray(status.goal)) pts.push(status.goal);
-        let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-        pts.forEach(v=>{ const x=v[0],y=v[1]; if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; });
+        let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=Infinity*-1;
+        pts.forEach(function(v){ const x=v[0], y=v[1]; if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; });
         if(!isFinite(minX)){ minX=0;minY=0;maxX=10;maxY=10; }
         const pad=24;
         const sx=(W-2*pad)/Math.max(1e-6,(maxX-minX));
         const sy=(H-2*pad)/Math.max(1e-6,(maxY-minY));
         const s=Math.min(sx,sy);
         const x=pt[0], y=pt[1];
-        return [ pad+(x-minX)*s, H - pad - (y-minY)*s ];
+        const X = pad + (x-minX)*s;
+        const Y = H - pad - (y-minY)*s;
+        return [X,Y];
       }
     }
-
     function fmtXY(p){ if(!Array.isArray(p)) return '-'; const x=Number(p[0]||0), y=Number(p[1]||0); return x.toFixed(2)+", "+y.toFixed(2); }
 
-    /* 초기 이벤트 바인딩 */
+    let _mockTimer=null;
+    function startMockRun(){}
+    function stopMock(){ if(_mockTimer){ clearInterval(_mockTimer); _mockTimer=null; } }
+
+    /***** 소환(복귀) 흐름 *****/
+    async function startSummon(){
+      // 복귀 호출
+      try{
+        await api('/api/return','POST');
+      }catch(e){
+        alert('로봇 소환 실패: 서버 연결 또는 복귀 좌표 설정을 확인하세요.');
+        console.error(e);
+        return;
+      }
+      summoning=true; guiding=false; paused=false; activeRoom=null;
+      showPage('page-summon');
+      startPolling();
+    }
+
     document.addEventListener('DOMContentLoaded', ()=>{
       $('#homeBtn')?.addEventListener('click', goHome);
       $('#backBtn')?.addEventListener('click', goBack);
-      $('#startBtn')?.addEventListener('click', ()=>{ openFloor(1); showPage('page-floor'); });
 
+      // 홈 버튼: 함께/소환
+      $('#btnTogether')?.addEventListener('click', startGuide);
+      $('#btnSummon')?.addEventListener('click', startSummon);
+
+      // 층 탭
       document.getElementById('tab-1')?.addEventListener('click', ()=>openFloor(1));
       document.getElementById('tab-2')?.addEventListener('click', ()=>openFloor(2));
       document.getElementById('tab-3')?.addEventListener('click', ()=>openFloor(3));
 
+      // 검색
       $('#searchInput')?.addEventListener('input', filterRooms);
       $('#clearSearchBtn')?.addEventListener('click', clearSearch);
 
+      // 안내 제어
       $('#pauseBtn')?.addEventListener('click', togglePause);
       $('#stopBtn')?.addEventListener('click', stopGuide);
 
+      // 모달
       $('#confirmNo')?.addEventListener('click', closeConfirm);
       $('#confirmYes')?.addEventListener('click', confirmNavigate);
 
+      // 초기 상태
       document.body.classList.add('home-active');
       showPage('page-home');
     });
   </script>
 </body>
 </html>
-
