@@ -126,7 +126,7 @@
     <main id="page-home" class="page active">
       <div class="hero">
         <div>
-          <h1>3어디로 안내할까요?</h1>
+          <h1>4어디로 안내할까요?</h1>
           <div class="sub">자리에 로봇이 근처에 있다면 함께 출발해요</div>
           <div class="sub">멀리 있다면 로봇이 먼저 찾아갈게요</div>
         </div>
@@ -259,8 +259,23 @@
     const DEV_ETA_SEC   = 0;
 
     /***** 서버 접속 정보 (반드시 교체) *****/
-    const BACKEND_URL = "https://samba-presents-fluid-reproduction.trycloudflare.com";
+    const BACKEND_URL = "https://page-paragraphs-pounds-ripe.trycloudflare.com";
     const API_KEY     = "dev-secret";
+
+    /***** 세션 식별자(탭/브라우저 고정) *****/
+    const SESSION_ID = (() => {
+      try {
+        const key = 'robot-session-id';
+        let v = localStorage.getItem(key);
+        if (!v) {
+          v = (crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2,10)));
+          localStorage.setItem(key, v);
+        }
+        return v;
+      } catch (e) {
+        return String(Math.random());
+      }
+    })();
 
     /***** 상태 플래그 *****/
     let currentFloor=1,pendingTarget=null;
@@ -353,12 +368,18 @@
     }
     function closeConfirm(){ $('#confirmWrap')?.classList.remove('show'); pendingTarget=null; }
 
+    /** 공통 API 호출 — 세션잠금 헤더 포함, 423 처리 **/
     async function api(path, method="GET", body=null){
       const url = BACKEND_URL.replace(/\/+$/,'') + path;
-      const opt={ method, headers: { 'x-api-key': API_KEY } };
+      const opt={ method, headers: { 'x-api-key': API_KEY, 'X-Session-Id': SESSION_ID } };
       if(body){ opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
       const r=await fetch(url, opt);
-      if(!r.ok) throw new Error(method+" "+path+" failed: "+r.status);
+      if(!r.ok){
+        if(r.status===423){
+          throw new Error('LOCKED'); // 다른 세션이 점유 중
+        }
+        throw new Error(method+" "+path+" failed: "+r.status);
+      }
       const ct=r.headers.get('content-type')||'';
       if(ct.includes('application/json')) return r.json();
       return r.text();
@@ -374,8 +395,12 @@
       try{
         await api('/api/navigate','POST',{ room: Number(target.code) });
       }catch(e){
-        alert('안내 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
-        console.error(e);
+        if(String(e.message).includes('LOCKED')){
+          alert('현재 다른 사용자가 안내 중입니다. 잠시 후 다시 이용해 주세요.');
+        }else{
+          alert('안내 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
+          console.error(e);
+        }
         [yes,no].forEach(b=>b && (b.disabled=false));
         return;
       }finally{
@@ -394,7 +419,7 @@
 
     async function togglePause(){
       if(!guiding) return;
-      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn');
+      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn']);
       [pb,sb,lb].forEach(b=>b && (b.disabled=true));
       try{
         if(!paused){
@@ -407,16 +432,28 @@
           const s=$('#guideStatus'); if(s) s.textContent='안내중';
         }
       }catch(e){
-        alert('동작 실패: 연결 상태를 확인하세요.');
-        console.error(e);
+        if(String(e.message).includes('LOCKED')){
+          alert('현재 다른 사용자가 안내 중입니다.');
+        }else{
+          alert('동작 실패: 연결 상태를 확인하세요.');
+          console.error(e);
+        }
       }finally{
         [pb,sb,lb].forEach(b=>b && (b.disabled=false));
       }
     }
     async function stopGuide(){
-      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn');
+      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn']);
       [pb,sb,lb].forEach(b=>b && (b.disabled=true));
-      try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
+      try{
+        await api('/api/stop','POST');
+      }catch(e){
+        if(String(e.message).includes('LOCKED')){
+          alert('현재 다른 사용자가 안내 중입니다.');
+        }else{
+          console.warn(e);
+        }
+      }
       guiding=false; paused=false; activeRoom=null; activeLabel=null; rendezvous=false; resumeTarget=null; rendezvousRoom=null;
       stopPolling(); stopMock(); showPage('page-floor');
       [pb,sb,lb].forEach(b=>b && (b.disabled=false));
@@ -487,7 +524,7 @@
       try{
         await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/return', {
           method: 'POST',
-          headers: { 'x-api-key': API_KEY }
+          headers: { 'x-api-key': API_KEY, 'X-Session-Id': SESSION_ID }
         });
       }catch(e){ console.warn(e); }
       // 복귀 누르면 홈으로
@@ -516,11 +553,11 @@
     async function ensureMap(){
       if(_mapImg && _mapMeta) return;
       try{
-        _mapMeta = await api('/api/map/meta','GET');
+        _mapMeta = await api('/api/map/meta','GET'); // API 키/세션 헤더 포함
         const url = BACKEND_URL.replace(/\/+$/,'') + '/api/map.png';
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=url; });
+        await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=url + `?k=${encodeURIComponent(API_KEY)}`; });
         _mapImg = img;
       }catch(e){ console.warn('map load failed', e); }
     }
@@ -628,8 +665,12 @@
       try{
         await api('/api/return','POST');
       }catch(e){
-        alert('로봇 소환 실패: 서버 연결 또는 복귀 좌표 설정을 확인하세요.');
-        console.error(e);
+        if(String(e.message).includes('LOCKED')){
+          alert('현재 다른 사용자가 안내 중이라 복귀를 시작할 수 없어요.');
+        } else {
+          alert('로봇 소환 실패: 서버 연결 또는 복귀 좌표 설정을 확인하세요.');
+          console.error(e);
+        }
         return;
       }
       summoning=true; guiding=false; paused=false; activeRoom=null; activeLabel=null;
@@ -668,8 +709,12 @@
       try{
         await api('/api/navigate','POST',{ room: Number(val) });
       }catch(e){
-        alert('이동 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
-        console.error(e);
+        if(String(e.message).includes('LOCKED')){
+          alert('현재 다른 사용자가 안내 중이라 이동을 시작할 수 없어요.');
+        }else{
+          alert('이동 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
+          console.error(e);
+        }
         return;
       }
       // 5) 재합류 대기 화면으로 전환
@@ -698,8 +743,12 @@
         try{
           await api('/api/navigate','POST',{ room: Number(resumeTarget.code) });
         }catch(e){
-          alert('재안내 시작 실패: 서버 연결을 확인하세요.');
-          console.error(e);
+          if(String(e.message).includes('LOCKED')){
+            alert('현재 다른 사용자가 안내 중이라 재안내를 시작할 수 없어요.');
+          }else{
+            alert('재안내 시작 실패: 서버 연결을 확인하세요.');
+            console.error(e);
+          }
           return;
         }
         activeRoom = String(resumeTarget.code);
@@ -770,6 +819,3 @@
   </script>
 </body>
 </html>
-    
-
-
