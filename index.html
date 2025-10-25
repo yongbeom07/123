@@ -84,8 +84,19 @@
     .searchBox{flex:1;display:flex;gap:8px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 12px}
     .searchBox input{flex:1;border:0;outline:none}
 
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:999}
-    .modal-backdrop.show{display:flex}
+    /* ▼ 수정: 클릭 막힘 방지 (숨김 상태는 pointer-events:none) */
+    .modal-backdrop{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.45);
+      display:none;
+      align-items:center; justify-content:center;
+      z-index:999;
+      pointer-events:none;         /* 숨겨졌을 때는 클릭 통과 */
+    }
+    .modal-backdrop.show{
+      display:flex;
+      pointer-events:auto;         /* 보여질 때만 클릭 차단 */
+    }
     .modal{background:#fff;padding:16px;border-radius:16px;width:min(92vw,420px)}
 
     /* 안내중 */
@@ -126,7 +137,7 @@
     <main id="page-home" class="page active">
       <div class="hero">
         <div>
-          <h1>어디로 안내할까요?</h1>
+          <h1>1어디로 안내할까요?</h1>
           <div class="sub">자리에 로봇이 근처에 있다면 함께 출발해요</div>
           <div class="sub">멀리 있다면 로봇이 먼저 찾아갈게요</div>
         </div>
@@ -284,7 +295,7 @@
     let resumeTarget=null, rendezvousRoom=null;
 
     /***** 호실/라벨 데이터 (정적) *****/
-    const ROOM_INFO={ /* (생략 없이 원본 유지) */
+    const ROOM_INFO={
       1:{"101":"정보통신대학 학장실","102":"전자공학과 학과사무실","102-1":"스마트ICT융합공학과 학과사무실","103":"연구용실험실","104":"강의실","105":"연구용실험실","106":"해동학술정보실","107":"강의실","108":"강의실","109":"강의실","110":"강의실","111":"강의실","112":"강의실","113":"강의실","114":"극한반도체 회로/소자 특성분석실","115":"강의실","116":"강의실","117":"강의실","119":"강의실","120":"강의실","121":"강의실","122":"연구용실험실","123":"강의실","124":"멘토링실","125":"공동동아리방","126":"안전공학과 학생회실","127":"강의실","128":"전자공학과 학생회실","129":"정보통신대학 행정실","130":"강의실","131":"외래교수실","132":"정보통신대학 학생쉼터","133":"연구용실험실","134":"강의실","135":"강의실","136":"연구용실험실","137":"연구용실험실"},
       2:{"201":"전자공학과회의실","201-1":"전자공학과 교수휴게실","202":"신일훈 교수연구실","203":"이병한 교수연구실","204":"박형철 교수연구실","205":"권민우 교수연구실","206":"남재원 교수연구실","207":"실습준비실","207-1":"강의실","208":"아날로그전자실험실습실","209":"마이크로프로세서연구실","210":"프로젝트실습실","210-1":"강의실","211":"인공지능연구실","212":"NX연구실","212-1":"운영체제연구실","213":"반도체소자연구실","213-1":"강의실","214":"회로설계연구실","215":"무선통신연구실","216":"종합설계(작업)실","217":"전자기수치해석연구실","218":"전자시뮬레이션실험실습실","219":"컴퓨터구조연구실","220":"컴퓨터구조연구실","221":"지능제어연구실","222":"컴퓨터실","223":"신호처리연구실","223-1":"강의실","224":"최승호 교수연구실","225":"박민기 교수연구실","226":"도현락 교수연구실","227":"경연웅 교수연구실","228":"양성준 교수연구실","229":"이승은 교수연구실","230":"정태호 교수연구실","231":"이예훈 교수연구실","232":"강의실","233":"유비쿼터스컴퓨팅연구실","233-1":"아날로그집적회로설계연구실","234":"유비쿼터스컴퓨팅연구실","235":"종합설계제작실","236":"강의실"},
       3:{"301":"김성권 교수연구실","301-1":"강의실","302":"최현덕 교수연구실","303":"강의실","304":"황병철 교수연구실","305":"이원영 교수연구실","306":"최의민 교수연구실","307":"김화정 교수연구실","308":"영상처리실험실","308-1":"강의실","309":"강의실","309-1":"연구용실험실","309-2":"연구용실험실","310":"교수회의실","311":"멀티미디어회로시스템실험실","312":"ICT회로계측실험실","313":"스마트미디어네트워크실험실","314":"스마트ICT융합공학과 학생회실","315":"기자재실","316":"협동적시스템소프트웨어연구실","317":"멀티미디어실험실","318":"전기전자회로실험실","318-1":"강의실","319":"음향공학실","320":"ICT융합실험실","320-1":"강의실","321":"머신러닝실험실","322":"실감미디어연구실","323":"미디어시뮬레이션실험실","324":"강의실","325":"강의실","326":"강의실","327":"서범준 교수연구실","328":"차병준 교수연구실","329":"이계민 교수연구실","330":"박구만 교수연구실","331":"허성연 교수연구실","332":"정현민 교수연구실","333":"박규태 교수연구실","334":"김동호 교수연구실","334-1":"호수에 오브레곤 교수연구실","335":"전력전자시스템실험실","335-1":"전력전자시스템실험실","336":"로봇지능 및 제어 연구실","337":"집적회로설계실험실","338":"강의실","339":"강의실","340":"강의실","341":"ICT융합공학교육실","342":"ICT공학실험실습실"}
@@ -361,9 +372,9 @@
     function openConfirm(code,label){
       pendingTarget={code,label};
       const msg=$('#confirmMsg'); if(msg) msg.textContent=code+'호 '+(label||'')+' 로 안내할까요?';
-      $('#confirmWrap')?.classList.add('show');
+      const wrap=$('#confirmWrap'); wrap?.classList.add('show'); wrap?.setAttribute('aria-hidden','false');
     }
-    function closeConfirm(){ $('#confirmWrap')?.classList.remove('show'); pendingTarget=null; }
+    function closeConfirm(){ const wrap=$('#confirmWrap'); wrap?.classList.remove('show'); wrap?.setAttribute('aria-hidden','true'); pendingTarget=null; }
 
     // ★ 모든 API 호출에 client-id 및 423 처리
     async function api(path, method="GET", body=null){
@@ -415,7 +426,7 @@
 
     async function togglePause(){
       if(!guiding) return;
-      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn');
+      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn']);
       [pb,sb,lb].forEach(b=>b && (b.disabled=true));
       try{
         if(!paused){
@@ -458,9 +469,6 @@
         const status=await api('/api/status','GET');
         lastStatus=status;
 
-        // (선택) 락 상태를 참고해 알림을 띄우고 싶으면 status.session을 활용
-        // console.log(status.session);
-
         if(summoning || rendezvous){
           const t=$('#summonStatus');
           if(t){
@@ -499,6 +507,7 @@
       if (wrap && dest) {
         dest.textContent = destText;
         wrap.classList.add('show');
+        wrap.setAttribute('aria-hidden','false');
       }
     }
     async function handleArrivedReturn(){
@@ -506,10 +515,12 @@
         await api('/api/return','POST'); // ★ return도 락 필요(서버에서 검사)
       }catch(e){ console.warn(e); }
       goHome();
-      document.getElementById('arrivedWrap')?.classList.remove('show');
+      closeArrivedModal();
     }
     function closeArrivedModal(){
-      document.getElementById('arrivedWrap')?.classList.remove('show');
+      const wrap=document.getElementById('arrivedWrap');
+      wrap?.classList.remove('show');
+      wrap?.setAttribute('aria-hidden','true');
     }
 
     /***** 지도 렌더링 *****/
@@ -660,10 +671,12 @@
     async function startLostFlow(){
       try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
       paused=true; guiding=false;
+      const wrap=$('#lostWrap');
       $('#lostInput').value='';
-      $('#lostWrap')?.classList.add('show');
+      wrap?.classList.add('show');
+      wrap?.setAttribute('aria-hidden','false');
     }
-    function closeLostModal(){ $('#lostWrap')?.classList.remove('show'); }
+    function closeLostModal(){ const wrap=$('#lostWrap'); wrap?.classList.remove('show'); wrap?.setAttribute('aria-hidden','true'); }
 
     async function confirmRendezvous(){
       const val = ($('#lostInput')?.value||'').trim();
@@ -694,9 +707,10 @@
       $('#rejoinMsg').textContent = resumeTarget
         ? `원래 목적지(${resumeTarget.code}호${resumeTarget.label?` (${resumeTarget.label})`:''})로 안내를 다시 시작할까요?`
         : '원래 목적지가 없습니다. 목적지를 선택하시겠어요?';
-      if(wrap){ wrap.classList.add('show'); }
+      wrap?.classList.add('show');
+      wrap?.setAttribute('aria-hidden','false');
     }
-    function closeRejoinModal(){ $('#rejoinWrap')?.classList.remove('show'); }
+    function closeRejoinModal(){ const wrap=$('#rejoinWrap'); wrap?.classList.remove('show'); wrap?.setAttribute('aria-hidden','true'); }
 
     async function rejoinYes(){
       closeRejoinModal();
@@ -727,6 +741,14 @@
     }
 
     document.addEventListener('DOMContentLoaded', ()=>{
+      /* ▼ 추가: 모든 모달 강제 초기화(클릭 막힘 원천 차단) */
+      document.querySelectorAll('.modal-backdrop').forEach(el=>{
+        el.classList.remove('show');
+        el.setAttribute('aria-hidden','true');
+        el.style.display = '';
+        el.style.pointerEvents = '';
+      });
+
       $('#homeBtn')?.addEventListener('click', goHome);
       $('#backBtn')?.addEventListener('click', goBack);
 
