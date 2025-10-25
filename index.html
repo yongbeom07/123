@@ -126,7 +126,7 @@
     <main id="page-home" class="page active">
       <div class="hero">
         <div>
-          <h1>1어디로 안내할까요?</h1>
+          <h1>어디로 안내할까요?</h1>
           <div class="sub">자리에 로봇이 근처에 있다면 함께 출발해요</div>
           <div class="sub">멀리 있다면 로봇이 먼저 찾아갈게요</div>
         </div>
@@ -189,7 +189,6 @@
       <div class="guide-controls">
         <button id="pauseBtn" class="btn">정지</button>
         <button id="stopBtn" class="btn">목적지 변경</button>
-        <!-- ▼ 신규: 로봇이 보이지 않을 때 -->
         <button id="lostBtn" class="btn">로봇이 보이지 않아요</button>
       </div>
     </section>
@@ -209,7 +208,7 @@
     </div>
   </div>
 
-  <!-- ◆ 도착 모달(인페이지, 팝업 무사용) -->
+  <!-- 도착 모달 -->
   <div id="arrivedWrap" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="arrivedTitle">
       <h3 id="arrivedTitle">목적지에 도착하였습니다</h3>
@@ -222,7 +221,7 @@
     </div>
   </div>
 
-  <!-- ▼ 신규: 로봇이 보이지 않을 때 입력 모달 -->
+  <!-- 로봇이 보이지 않을 때 입력 모달 -->
   <div id="lostWrap" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lostTitle">
       <h3 id="lostTitle">지금 옆의 호실을 입력해 주세요</h3>
@@ -238,7 +237,7 @@
     </div>
   </div>
 
-  <!-- ▼ 신규: 재안내 시작 확인 모달 -->
+  <!-- 재안내 시작 확인 모달 -->
   <div id="rejoinWrap" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rejoinTitle">
       <h3 id="rejoinTitle">로봇이 합류했습니다</h3>
@@ -253,27 +252,39 @@
   <script>
     'use strict';
 
-    /***** 실제 운영 모드 *****/
-    const DEV_FORCE_NAV = false;
-    const DEV_MOCK_PATH = false;
-    const DEV_ETA_SEC   = 0;
-
-    /***** 서버 접속 정보 (반드시 교체) *****/
-    const BACKEND_URL = "https://globe-allocation-blocked-hurricane.trycloudflare.com";
+    /***** 서버 접속 정보 *****/
+    const BACKEND_URL = "https://glance-race-orange-kick.trycloudflare.com";
     const API_KEY     = "dev-secret";
+
+    /***** 클라이언트 식별자 & 하트비트 *****/
+    const CLIENT_ID = (() => {
+      const k='ig_client_id';
+      let v=localStorage.getItem(k);
+      if(!v){ v=crypto.randomUUID(); localStorage.setItem(k,v); }
+      return v;
+    })();
+    let __hb = null;
+    async function acquireSession(){
+      await api('/api/session/acquire','POST');
+      if(!__hb){
+        __hb = setInterval(()=>api('/api/session/heartbeat','POST').catch(()=>{}), 120000); // 2분
+      }
+    }
+    async function releaseSession(){
+      if(__hb){ clearInterval(__hb); __hb=null; }
+      try{ await api('/api/session/release','POST'); }catch(_){}
+    }
 
     /***** 상태 플래그 *****/
     let currentFloor=1,pendingTarget=null;
     let guiding=false, paused=false, pollingTimer=null, activeRoom=null;
-    let summoning=false;            // 기존: 소환(복귀 호출)
-    let rendezvous=false;           // 신규: 재합류(사용자 위치로 이동)
+    let summoning=false, rendezvous=false;
     let lastStatus=null;
-    let activeLabel=null;           // 목적지 라벨 보존(도착 모달 표기를 위해)
-    let resumeTarget=null;          // 신규: 재합류 후 재안내할 원래 목적지 {code,label}
-    let rendezvousRoom=null;        // 신규: 사용자가 입력한 합류 호실
+    let activeLabel=null;
+    let resumeTarget=null, rendezvousRoom=null;
 
     /***** 호실/라벨 데이터 (정적) *****/
-    const ROOM_INFO={
+    const ROOM_INFO={ /* (생략 없이 원본 유지) */
       1:{"101":"정보통신대학 학장실","102":"전자공학과 학과사무실","102-1":"스마트ICT융합공학과 학과사무실","103":"연구용실험실","104":"강의실","105":"연구용실험실","106":"해동학술정보실","107":"강의실","108":"강의실","109":"강의실","110":"강의실","111":"강의실","112":"강의실","113":"강의실","114":"극한반도체 회로/소자 특성분석실","115":"강의실","116":"강의실","117":"강의실","119":"강의실","120":"강의실","121":"강의실","122":"연구용실험실","123":"강의실","124":"멘토링실","125":"공동동아리방","126":"안전공학과 학생회실","127":"강의실","128":"전자공학과 학생회실","129":"정보통신대학 행정실","130":"강의실","131":"외래교수실","132":"정보통신대학 학생쉼터","133":"연구용실험실","134":"강의실","135":"강의실","136":"연구용실험실","137":"연구용실험실"},
       2:{"201":"전자공학과회의실","201-1":"전자공학과 교수휴게실","202":"신일훈 교수연구실","203":"이병한 교수연구실","204":"박형철 교수연구실","205":"권민우 교수연구실","206":"남재원 교수연구실","207":"실습준비실","207-1":"강의실","208":"아날로그전자실험실습실","209":"마이크로프로세서연구실","210":"프로젝트실습실","210-1":"강의실","211":"인공지능연구실","212":"NX연구실","212-1":"운영체제연구실","213":"반도체소자연구실","213-1":"강의실","214":"회로설계연구실","215":"무선통신연구실","216":"종합설계(작업)실","217":"전자기수치해석연구실","218":"전자시뮬레이션실험실습실","219":"컴퓨터구조연구실","220":"컴퓨터구조연구실","221":"지능제어연구실","222":"컴퓨터실","223":"신호처리연구실","223-1":"강의실","224":"최승호 교수연구실","225":"박민기 교수연구실","226":"도현락 교수연구실","227":"경연웅 교수연구실","228":"양성준 교수연구실","229":"이승은 교수연구실","230":"정태호 교수연구실","231":"이예훈 교수연구실","232":"강의실","233":"유비쿼터스컴퓨팅연구실","233-1":"아날로그집적회로설계연구실","234":"유비쿼터스컴퓨팅연구실","235":"종합설계제작실","236":"강의실"},
       3:{"301":"김성권 교수연구실","301-1":"강의실","302":"최현덕 교수연구실","303":"강의실","304":"황병철 교수연구실","305":"이원영 교수연구실","306":"최의민 교수연구실","307":"김화정 교수연구실","308":"영상처리실험실","308-1":"강의실","309":"강의실","309-1":"연구용실험실","309-2":"연구용실험실","310":"교수회의실","311":"멀티미디어회로시스템실험실","312":"ICT회로계측실험실","313":"스마트미디어네트워크실험실","314":"스마트ICT융합공학과 학생회실","315":"기자재실","316":"협동적시스템소프트웨어연구실","317":"멀티미디어실험실","318":"전기전자회로실험실","318-1":"강의실","319":"음향공학실","320":"ICT융합실험실","320-1":"강의실","321":"머신러닝실험실","322":"실감미디어연구실","323":"미디어시뮬레이션실험실","324":"강의실","325":"강의실","326":"강의실","327":"서범준 교수연구실","328":"차병준 교수연구실","329":"이계민 교수연구실","330":"박구만 교수연구실","331":"허성연 교수연구실","332":"정현민 교수연구실","333":"박규태 교수연구실","334":"김동호 교수연구실","334-1":"호수에 오브레곤 교수연구실","335":"전력전자시스템실험실","335-1":"전력전자시스템실험실","336":"로봇지능 및 제어 연구실","337":"집적회로설계실험실","338":"강의실","339":"강의실","340":"강의실","341":"ICT융합공학교육실","342":"ICT공학실험실습실"}
@@ -292,6 +303,7 @@
       stopPolling(); stopMock();
       guiding=false; paused=false; activeRoom=null; summoning=false; activeLabel=null;
       rendezvous=false; resumeTarget=null; rendezvousRoom=null;
+      releaseSession();  // ★ 락 해제
       setActiveTab(1); showPage('page-home');
     }
     function goBack(){
@@ -353,11 +365,18 @@
     }
     function closeConfirm(){ $('#confirmWrap')?.classList.remove('show'); pendingTarget=null; }
 
+    // ★ 모든 API 호출에 client-id 및 423 처리
     async function api(path, method="GET", body=null){
       const url = BACKEND_URL.replace(/\/+$/,'') + path;
-      const opt={ method, headers: { 'x-api-key': API_KEY } };
+      const opt={ method, headers: { 'x-api-key': API_KEY, 'X-Client-Id': CLIENT_ID } };
       if(body){ opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
       const r=await fetch(url, opt);
+      if(r.status===423){
+        let detail=null; try{ detail=await r.json(); }catch(_){}
+        const rem = detail?.remaining ?? '';
+        alert(`다른 사용자가 안내 중입니다.\n잠시만 기다려 주세요. (남은 점유 시간: ${rem}초)`);
+        throw new Error("423 Locked");
+      }
       if(!r.ok) throw new Error(method+" "+path+" failed: "+r.status);
       const ct=r.headers.get('content-type')||'';
       if(ct.includes('application/json')) return r.json();
@@ -372,9 +391,11 @@
       const target=pendingTarget; closeConfirm();
 
       try{
+        // ★ 선점
+        await acquireSession();
         await api('/api/navigate','POST',{ room: Number(target.code) });
       }catch(e){
-        alert('안내 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
+        alert('안내 시작 실패: 서버 연결/권한/좌표 설정을 확인하세요.');
         console.error(e);
         [yes,no].forEach(b=>b && (b.disabled=false));
         return;
@@ -407,18 +428,19 @@
           const s=$('#guideStatus'); if(s) s.textContent='안내중';
         }
       }catch(e){
-        alert('동작 실패: 연결 상태를 확인하세요.');
+        alert('동작 실패: 연결/권한 상태를 확인하세요.');
         console.error(e);
       }finally{
         [pb,sb,lb].forEach(b=>b && (b.disabled=false));
       }
     }
     async function stopGuide(){
-      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn');
+      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn']);
       [pb,sb,lb].forEach(b=>b && (b.disabled=true));
       try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
       guiding=false; paused=false; activeRoom=null; activeLabel=null; rendezvous=false; resumeTarget=null; rendezvousRoom=null;
       stopPolling(); stopMock(); showPage('page-floor');
+      await releaseSession(); // ★ 락 해제
       [pb,sb,lb].forEach(b=>b && (b.disabled=false));
     }
 
@@ -436,7 +458,9 @@
         const status=await api('/api/status','GET');
         lastStatus=status;
 
-        // 소환/재합류 진행 중이면 상태 표시 업데이트
+        // (선택) 락 상태를 참고해 알림을 띄우고 싶으면 status.session을 활용
+        // console.log(status.session);
+
         if(summoning || rendezvous){
           const t=$('#summonStatus');
           if(t){
@@ -445,22 +469,17 @@
           }
         }
 
-        // 안내중 UI 갱신
         if(guiding) updateGuideUI(status);
 
-        // 도착 처리
         if(status && status.arrived){
           stopPolling();
           if(summoning){
-            // 소환 완료 → 목적지 선택 화면
             summoning=false;
             openFloor(1);
             showPage('page-floor');
           }else if(rendezvous){
-            // 재합류 완료 → 원래 목적지 재안내 여부 묻기
             openRejoinModal();
           }else if(guiding){
-            // 일반 안내 도착 → 도착 모달
             openArrivedModal();
           }
         }
@@ -473,7 +492,6 @@
       }
     }
 
-    /* ===== 도착 모달(UI 유지) ===== */
     function openArrivedModal(){
       const destText = activeRoom ? `${activeRoom}호${activeLabel ? ` (${activeLabel})` : ''}` : '목적지';
       const wrap = document.getElementById('arrivedWrap');
@@ -485,12 +503,8 @@
     }
     async function handleArrivedReturn(){
       try{
-        await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/return', {
-          method: 'POST',
-          headers: { 'x-api-key': API_KEY }
-        });
+        await api('/api/return','POST'); // ★ return도 락 필요(서버에서 검사)
       }catch(e){ console.warn(e); }
-      // 복귀 누르면 홈으로
       goHome();
       document.getElementById('arrivedWrap')?.classList.remove('show');
     }
@@ -623,18 +637,18 @@
     function startMockRun(){}
     function stopMock(){ if(_mockTimer){ clearInterval(_mockTimer); _mockTimer=null; } }
 
-    /***** 소환(복귀) 흐름 *****/
+    /***** 소환(복귀) *****/
     async function startSummon(){
       try{
+        await acquireSession(); // ★ 복귀도 선점
         await api('/api/return','POST');
       }catch(e){
-        alert('로봇 소환 실패: 서버 연결 또는 복귀 좌표 설정을 확인하세요.');
+        alert('로봇 소환 실패: 연결/권한/복귀 좌표를 확인하세요.');
         console.error(e);
         return;
       }
       summoning=true; guiding=false; paused=false; activeRoom=null; activeLabel=null;
       rendezvous=false; resumeTarget=null; rendezvousRoom=null;
-      // 소환 화면 문구
       $('#summonPill').textContent='소환중';
       $('#summonTitle').textContent='로봇이 열심히 가고 있어요…';
       $('#summonHint').textContent='로봇이 도착하면 목적지를 선택할 수 있어요.';
@@ -642,12 +656,10 @@
       startPolling();
     }
 
-    /***** ▼ 신규: 재합류(로봇이 보이지 않을 때) 흐름 *****/
+    /***** 재합류(로봇이 보이지 않을 때) *****/
     async function startLostFlow(){
-      // 1) 즉시 정지
       try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
-      paused=true; guiding=false; // 안내 잠시 중단
-      // 2) 입력 모달 열기
+      paused=true; guiding=false;
       $('#lostInput').value='';
       $('#lostWrap')?.classList.add('show');
     }
@@ -656,23 +668,18 @@
     async function confirmRendezvous(){
       const val = ($('#lostInput')?.value||'').trim();
       if(!/^\d+$/.test(val)){ alert('호실 번호를 숫자로 입력해 주세요. 예: 101'); return; }
-      // 3) 원래 목적지 저장
-      if(activeRoom){
-        resumeTarget = { code: activeRoom, label: activeLabel || null };
-      } else {
-        resumeTarget = null;
-      }
+      if(activeRoom){ resumeTarget = { code: activeRoom, label: activeLabel || null }; } else { resumeTarget = null; }
       rendezvousRoom = val;
-      // 4) 해당 호실로 이동
+
       closeLostModal();
       try{
+        await acquireSession(); // ★ 재합류도 선점
         await api('/api/navigate','POST',{ room: Number(val) });
       }catch(e){
-        alert('이동 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
+        alert('이동 시작 실패: 연결/권한/좌표 설정을 확인하세요.');
         console.error(e);
         return;
       }
-      // 5) 재합류 대기 화면으로 전환
       summoning=false; rendezvous=true;
       $('#summonPill').textContent='재합류중';
       $('#summonTitle').textContent=`로봇이 ${val}호 앞으로 이동 중…`;
@@ -682,8 +689,7 @@
     }
 
     function openRejoinModal(){
-      // 재합류 완료
-      rendezvous=true; // 여전히 플래그 true 상태에서 모달 띄움
+      rendezvous=true;
       const wrap = $('#rejoinWrap');
       $('#rejoinMsg').textContent = resumeTarget
         ? `원래 목적지(${resumeTarget.code}호${resumeTarget.label?` (${resumeTarget.label})`:''})로 안내를 다시 시작할까요?`
@@ -698,7 +704,7 @@
         try{
           await api('/api/navigate','POST',{ room: Number(resumeTarget.code) });
         }catch(e){
-          alert('재안내 시작 실패: 서버 연결을 확인하세요.');
+          alert('재안내 시작 실패: 연결/권한 상태를 확인하세요.');
           console.error(e);
           return;
         }
@@ -710,13 +716,11 @@
         showPage('page-guide');
         startPolling();
       } else {
-        // 원래 목적지 없으면 목적지 선택 화면으로
         rendezvous=false; summoning=false; guiding=false; paused=false;
         openFloor(1); showPage('page-floor');
       }
     }
     function rejoinNo(){
-      // 재안내 거절: 목적지 선택 화면으로 이동(명확)
       closeRejoinModal();
       rendezvous=false; summoning=false; guiding=false; paused=false;
       openFloor(1); showPage('page-floor');
@@ -726,48 +730,37 @@
       $('#homeBtn')?.addEventListener('click', goHome);
       $('#backBtn')?.addEventListener('click', goBack);
 
-      // 홈 버튼: 함께/소환
       $('#btnTogether')?.addEventListener('click', startGuide);
       $('#btnSummon')?.addEventListener('click', startSummon);
 
-      // 층 탭
       document.getElementById('tab-1')?.addEventListener('click', ()=>openFloor(1));
       document.getElementById('tab-2')?.addEventListener('click', ()=>openFloor(2));
       document.getElementById('tab-3')?.addEventListener('click', ()=>openFloor(3));
 
-      // 검색
       $('#searchInput')?.addEventListener('input', filterRooms);
       $('#clearSearchBtn')?.addEventListener('click', clearSearch);
 
-      // 안내 제어
       $('#pauseBtn')?.addEventListener('click', togglePause);
       $('#stopBtn')?.addEventListener('click', stopGuide);
-      // 신규: 로봇이 보이지 않아요
       $('#lostBtn')?.addEventListener('click', startLostFlow);
 
-      // 확인 모달
       $('#confirmNo')?.addEventListener('click', closeConfirm);
       $('#confirmYes')?.addEventListener('click', confirmNavigate);
 
-      // 도착 모달
       document.getElementById('arrivedReturn')?.addEventListener('click', handleArrivedReturn);
       document.getElementById('arrivedClose')?.addEventListener('click', closeArrivedModal);
 
-      // 신규: Lost 입력 모달
       $('#lostClear')?.addEventListener('click', ()=>{ const i=$('#lostInput'); if(i) i.value=''; i?.focus(); });
       $('#lostCancel')?.addEventListener('click', closeLostModal);
       $('#lostGo')?.addEventListener('click', confirmRendezvous);
       $('#lostInput')?.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmRendezvous(); });
 
-      // 신규: 재안내 모달
       $('#rejoinYes')?.addEventListener('click', rejoinYes);
       $('#rejoinNo')?.addEventListener('click', rejoinNo);
 
-      // 초기 상태
       document.body.classList.add('home-active');
       showPage('page-home');
     });
   </script>
 </body>
 </html>
-    
