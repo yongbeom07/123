@@ -126,7 +126,7 @@
     <main id="page-home" class="page active">
       <div class="hero">
         <div>
-          <h1>어디로 안내할까요?</h1>
+          <h1>1어디로 안내할까요?</h1>
           <div class="sub">자리에 로봇이 근처에 있다면 함께 출발해요</div>
           <div class="sub">멀리 있다면 로봇이 먼저 찾아갈게요</div>
         </div>
@@ -137,13 +137,13 @@
       </div>
     </main>
 
-    <!-- 소환(복귀) 진행 화면 -->
+    <!-- 소환(복귀/재합류) 진행 화면 -->
     <section id="page-summon" class="page">
       <div class="center">
-        <div class="pill">소환중</div>
-        <h2>로봇이 열심히 가고 있어요…</h2>
+        <div class="pill" id="summonPill">소환중</div>
+        <h2 id="summonTitle">로봇이 열심히 가고 있어요…</h2>
         <div class="hint" id="summonStatus">연결 대기중…</div>
-        <div class="hint">로봇이 도착하면 목적지를 선택할 수 있어요.</div>
+        <div class="hint" id="summonHint">로봇이 도착하면 목적지를 선택할 수 있어요.</div>
       </div>
     </section>
 
@@ -189,6 +189,8 @@
       <div class="guide-controls">
         <button id="pauseBtn" class="btn">정지</button>
         <button id="stopBtn" class="btn">목적지 변경</button>
+        <!-- ▼ 신규: 로봇이 보이지 않을 때 -->
+        <button id="lostBtn" class="btn">로봇이 보이지 않아요</button>
       </div>
     </section>
 
@@ -220,6 +222,34 @@
     </div>
   </div>
 
+  <!-- ▼ 신규: 로봇이 보이지 않을 때 입력 모달 -->
+  <div id="lostWrap" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lostTitle">
+      <h3 id="lostTitle">지금 옆의 호실을 입력해 주세요</h3>
+      <p style="color:#475569;margin-top:4px">예: 101, 215 등. 로봇이 해당 호실 앞으로 이동해 합류합니다.</p>
+      <div class="searchBox" style="margin-top:8px">
+        <input id="lostInput" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="호실 번호 (숫자만)" />
+        <button id="lostClear" class="btn">지우기</button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button id="lostCancel" class="btn">취소</button>
+        <button id="lostGo" class="btn success">이 위치로 오기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▼ 신규: 재안내 시작 확인 모달 -->
+  <div id="rejoinWrap" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rejoinTitle">
+      <h3 id="rejoinTitle">로봇이 합류했습니다</h3>
+      <p id="rejoinMsg" style="color:#475569">원래 목적지로 안내를 다시 시작할까요?</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button id="rejoinNo" class="btn">아니요</button>
+        <button id="rejoinYes" class="btn success">예, 다시 안내</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     'use strict';
 
@@ -229,15 +259,18 @@
     const DEV_ETA_SEC   = 0;
 
     /***** 서버 접속 정보 (반드시 교체) *****/
-    const BACKEND_URL = "https://harrison-discounted-apparently-mediterranean.trycloudflare.com";
+    const BACKEND_URL = "https://globe-allocation-blocked-hurricane.trycloudflare.com";
     const API_KEY     = "dev-secret";
 
     /***** 상태 플래그 *****/
     let currentFloor=1,pendingTarget=null;
     let guiding=false, paused=false, pollingTimer=null, activeRoom=null;
-    let summoning=false; // 소환(복귀 호출) 진행 여부
+    let summoning=false;            // 기존: 소환(복귀 호출)
+    let rendezvous=false;           // 신규: 재합류(사용자 위치로 이동)
     let lastStatus=null;
-    let activeLabel=null; // 목적지 라벨 보존(도착 모달 표기를 위해)
+    let activeLabel=null;           // 목적지 라벨 보존(도착 모달 표기를 위해)
+    let resumeTarget=null;          // 신규: 재합류 후 재안내할 원래 목적지 {code,label}
+    let rendezvousRoom=null;        // 신규: 사용자가 입력한 합류 호실
 
     /***** 호실/라벨 데이터 (정적) *****/
     const ROOM_INFO={
@@ -258,6 +291,7 @@
     function goHome(){
       stopPolling(); stopMock();
       guiding=false; paused=false; activeRoom=null; summoning=false; activeLabel=null;
+      rendezvous=false; resumeTarget=null; rendezvousRoom=null;
       setActiveTab(1); showPage('page-home');
     }
     function goBack(){
@@ -349,8 +383,8 @@
       }
 
       activeRoom=target.code;
-      activeLabel=target.label || null; // ★ 라벨 보존
-      guiding=true; paused=false; summoning=false;
+      activeLabel=target.label || null;
+      guiding=true; paused=false; summoning=false; rendezvous=false; resumeTarget=null; rendezvousRoom=null;
       const g=$('#goalText'); if(g) g.textContent=target.code+'호'+(activeLabel?(' ('+activeLabel+')'):'');
       const s=$('#guideStatus'); if(s) s.textContent='안내 시작됨';
       const pb=$('#pauseBtn'); if(pb) pb.textContent='정지';
@@ -360,8 +394,8 @@
 
     async function togglePause(){
       if(!guiding) return;
-      const pb=$('#pauseBtn'), sb=$('#stopBtn');
-      [pb,sb].forEach(b=>b && (b.disabled=true));
+      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn');
+      [pb,sb,lb].forEach(b=>b && (b.disabled=true));
       try{
         if(!paused){
           await api('/api/stop','POST');
@@ -376,16 +410,16 @@
         alert('동작 실패: 연결 상태를 확인하세요.');
         console.error(e);
       }finally{
-        [pb,sb].forEach(b=>b && (b.disabled=false));
+        [pb,sb,lb].forEach(b=>b && (b.disabled=false));
       }
     }
     async function stopGuide(){
-      const pb=$('#pauseBtn'), sb=$('#stopBtn');
-      [pb,sb].forEach(b=>b && (b.disabled=true));
+      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn');
+      [pb,sb,lb].forEach(b=>b && (b.disabled=true));
       try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
-      guiding=false; paused=false; activeRoom=null; activeLabel=null;
+      guiding=false; paused=false; activeRoom=null; activeLabel=null; rendezvous=false; resumeTarget=null; rendezvousRoom=null;
       stopPolling(); stopMock(); showPage('page-floor');
-      [pb,sb].forEach(b=>b && (b.disabled=false));
+      [pb,sb,lb].forEach(b=>b && (b.disabled=false));
     }
 
     function startPolling(){
@@ -402,8 +436,8 @@
         const status=await api('/api/status','GET');
         lastStatus=status;
 
-        // 소환중이면 소환 상태 텍스트 업데이트
-        if(summoning){
+        // 소환/재합류 진행 중이면 상태 표시 업데이트
+        if(summoning || rendezvous){
           const t=$('#summonStatus');
           if(t){
             if(status?.current) t.textContent = '현재 위치: '+fmtXY(status.current);
@@ -418,17 +452,20 @@
         if(status && status.arrived){
           stopPolling();
           if(summoning){
-            // 소환 완료 → 목적지 선택 화면으로
+            // 소환 완료 → 목적지 선택 화면
             summoning=false;
             openFloor(1);
             showPage('page-floor');
+          }else if(rendezvous){
+            // 재합류 완료 → 원래 목적지 재안내 여부 묻기
+            openRejoinModal();
           }else if(guiding){
-            // ◆ 팝업 사용하지 않고 인페이지 모달로 표시
+            // 일반 안내 도착 → 도착 모달
             openArrivedModal();
           }
         }
       }catch(e){
-        if(summoning){
+        if(summoning || rendezvous){
           const t=$('#summonStatus'); if(t) t.textContent='연결 대기중…';
         }else{
           const s=$('#guideStatus'); if(s) s.textContent='연결 대기중…';
@@ -588,7 +625,6 @@
 
     /***** 소환(복귀) 흐름 *****/
     async function startSummon(){
-      // 복귀 호출
       try{
         await api('/api/return','POST');
       }catch(e){
@@ -597,8 +633,93 @@
         return;
       }
       summoning=true; guiding=false; paused=false; activeRoom=null; activeLabel=null;
+      rendezvous=false; resumeTarget=null; rendezvousRoom=null;
+      // 소환 화면 문구
+      $('#summonPill').textContent='소환중';
+      $('#summonTitle').textContent='로봇이 열심히 가고 있어요…';
+      $('#summonHint').textContent='로봇이 도착하면 목적지를 선택할 수 있어요.';
       showPage('page-summon');
       startPolling();
+    }
+
+    /***** ▼ 신규: 재합류(로봇이 보이지 않을 때) 흐름 *****/
+    async function startLostFlow(){
+      // 1) 즉시 정지
+      try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
+      paused=true; guiding=false; // 안내 잠시 중단
+      // 2) 입력 모달 열기
+      $('#lostInput').value='';
+      $('#lostWrap')?.classList.add('show');
+    }
+    function closeLostModal(){ $('#lostWrap')?.classList.remove('show'); }
+
+    async function confirmRendezvous(){
+      const val = ($('#lostInput')?.value||'').trim();
+      if(!/^\d+$/.test(val)){ alert('호실 번호를 숫자로 입력해 주세요. 예: 101'); return; }
+      // 3) 원래 목적지 저장
+      if(activeRoom){
+        resumeTarget = { code: activeRoom, label: activeLabel || null };
+      } else {
+        resumeTarget = null;
+      }
+      rendezvousRoom = val;
+      // 4) 해당 호실로 이동
+      closeLostModal();
+      try{
+        await api('/api/navigate','POST',{ room: Number(val) });
+      }catch(e){
+        alert('이동 시작 실패: 서버 연결 또는 좌표 설정을 확인하세요.');
+        console.error(e);
+        return;
+      }
+      // 5) 재합류 대기 화면으로 전환
+      summoning=false; rendezvous=true;
+      $('#summonPill').textContent='재합류중';
+      $('#summonTitle').textContent=`로봇이 ${val}호 앞으로 이동 중…`;
+      $('#summonHint').textContent='로봇이 도착하면 원래 목적지로 재안내를 시작할 수 있어요.';
+      showPage('page-summon');
+      startPolling();
+    }
+
+    function openRejoinModal(){
+      // 재합류 완료
+      rendezvous=true; // 여전히 플래그 true 상태에서 모달 띄움
+      const wrap = $('#rejoinWrap');
+      $('#rejoinMsg').textContent = resumeTarget
+        ? `원래 목적지(${resumeTarget.code}호${resumeTarget.label?` (${resumeTarget.label})`:''})로 안내를 다시 시작할까요?`
+        : '원래 목적지가 없습니다. 목적지를 선택하시겠어요?';
+      if(wrap){ wrap.classList.add('show'); }
+    }
+    function closeRejoinModal(){ $('#rejoinWrap')?.classList.remove('show'); }
+
+    async function rejoinYes(){
+      closeRejoinModal();
+      if(resumeTarget && resumeTarget.code){
+        try{
+          await api('/api/navigate','POST',{ room: Number(resumeTarget.code) });
+        }catch(e){
+          alert('재안내 시작 실패: 서버 연결을 확인하세요.');
+          console.error(e);
+          return;
+        }
+        activeRoom = String(resumeTarget.code);
+        activeLabel = resumeTarget.label || null;
+        guiding=true; paused=false; rendezvous=false; summoning=false;
+        $('#goalText').textContent = activeRoom+'호'+(activeLabel?(' ('+activeLabel+')'):'');
+        $('#guideStatus').textContent = '안내 시작됨';
+        showPage('page-guide');
+        startPolling();
+      } else {
+        // 원래 목적지 없으면 목적지 선택 화면으로
+        rendezvous=false; summoning=false; guiding=false; paused=false;
+        openFloor(1); showPage('page-floor');
+      }
+    }
+    function rejoinNo(){
+      // 재안내 거절: 목적지 선택 화면으로 이동(명확)
+      closeRejoinModal();
+      rendezvous=false; summoning=false; guiding=false; paused=false;
+      openFloor(1); showPage('page-floor');
     }
 
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -621,6 +742,8 @@
       // 안내 제어
       $('#pauseBtn')?.addEventListener('click', togglePause);
       $('#stopBtn')?.addEventListener('click', stopGuide);
+      // 신규: 로봇이 보이지 않아요
+      $('#lostBtn')?.addEventListener('click', startLostFlow);
 
       // 확인 모달
       $('#confirmNo')?.addEventListener('click', closeConfirm);
@@ -630,6 +753,16 @@
       document.getElementById('arrivedReturn')?.addEventListener('click', handleArrivedReturn);
       document.getElementById('arrivedClose')?.addEventListener('click', closeArrivedModal);
 
+      // 신규: Lost 입력 모달
+      $('#lostClear')?.addEventListener('click', ()=>{ const i=$('#lostInput'); if(i) i.value=''; i?.focus(); });
+      $('#lostCancel')?.addEventListener('click', closeLostModal);
+      $('#lostGo')?.addEventListener('click', confirmRendezvous);
+      $('#lostInput')?.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmRendezvous(); });
+
+      // 신규: 재안내 모달
+      $('#rejoinYes')?.addEventListener('click', rejoinYes);
+      $('#rejoinNo')?.addEventListener('click', rejoinNo);
+
       // 초기 상태
       document.body.classList.add('home-active');
       showPage('page-home');
@@ -637,3 +770,4 @@
   </script>
 </body>
 </html>
+    
