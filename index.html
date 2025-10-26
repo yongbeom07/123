@@ -84,8 +84,8 @@
     .searchBox{flex:1;display:flex;gap:8px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 12px}
     .searchBox input{flex:1;border:0;outline:none}
 
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:999; pointer-events: none;}
-    .modal-backdrop.show{display:flex; pointer-events: auto;}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:999}
+    .modal-backdrop.show{display:flex}
     .modal{background:#fff;padding:16px;border-radius:16px;width:min(92vw,420px)}
 
     /* 안내중 */
@@ -111,6 +111,8 @@
     }
     #page-summon h2{margin:0}
     #page-summon .hint{color:#374151}
+
+    .notice{background:#fff4; border:1px dashed var(--border); color:#374151; padding:10px 12px; border-radius:12px; text-align:center; margin-top:10px}
   </style>
 </head>
 <body>
@@ -126,9 +128,10 @@
     <main id="page-home" class="page active">
       <div class="hero">
         <div>
-          <h1>어디로 안내할까요?</h1>
+          <h1>1어디로 안내할까요?</h1>
           <div class="sub">자리에 로봇이 근처에 있다면 함께 출발해요</div>
           <div class="sub">멀리 있다면 로봇이 먼저 찾아갈게요</div>
+          <div id="busyNotice" class="notice" style="display:none">현재 다른 사용자가 이용 중입니다. 잠시 후 다시 시도해 주세요.</div>
         </div>
         <div class="btn-row">
           <button id="btnTogether" class="btn primary">로봇과 함께 있어요</button>
@@ -189,7 +192,6 @@
       <div class="guide-controls">
         <button id="pauseBtn" class="btn">정지</button>
         <button id="stopBtn" class="btn">목적지 변경</button>
-        <!-- ▼ 신규: 로봇이 보이지 않을 때 -->
         <button id="lostBtn" class="btn">로봇이 보이지 않아요</button>
       </div>
     </section>
@@ -209,7 +211,7 @@
     </div>
   </div>
 
-    <!-- ◆ 도착 모달 -->
+  <!-- 도착 모달 -->
   <div id="arrivedWrap" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="arrivedTitle">
       <h3 id="arrivedTitle">목적지에 도착하였습니다</h3>
@@ -222,13 +224,13 @@
     </div>
   </div>
 
-  <!-- ▼ 로봇이 보이지 않을 때 입력 모달 -->
+  <!-- 로봇이 보이지 않을 때 입력 모달 -->
   <div id="lostWrap" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lostTitle">
       <h3 id="lostTitle">지금 옆의 호실을 입력해 주세요</h3>
       <p style="color:#475569;margin-top:4px">예: 101, 215 등. 로봇이 해당 호실 앞으로 이동해 합류합니다.</p>
       <div class="searchBox" style="margin-top:8px">
-        <input id="lostInput" type="text" inputmode="numeric" pattern="[0-9\\-]*" placeholder="호실 번호 (숫자만)" />
+        <input id="lostInput" type="text" inputmode="numeric" pattern="[0-9\-]*" placeholder="호실 번호 (숫자만)" />
         <button id="lostClear" class="btn">지우기</button>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
@@ -238,7 +240,7 @@
     </div>
   </div>
 
-  <!-- ▼ 재안내 시작 확인 모달 -->
+  <!-- 재안내 시작 확인 모달 -->
   <div id="rejoinWrap" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rejoinTitle">
       <h3 id="rejoinTitle">로봇이 합류했습니다</h3>
@@ -250,78 +252,89 @@
     </div>
   </div>
 
-  <!-- 전역 에러 캐처 + 구형 브라우저 경고 -->
-  <script>
-    window.addEventListener('error', function (e) {
-      alert('스크립트 오류: ' + (e && e.message ? e.message : '알 수 없음'));
-    });
-    (function(){
-      try { eval('var t={a:1}; t?.a'); }
-      catch (e) {
-        alert('브라우저/웹뷰가 너무 오래되었습니다. 최신 크롬/삼성인터넷으로 열어주세요.');
-      }
-    })();
-  </script>
-
   <script>
     'use strict';
 
     /***** 실제 운영 모드 *****/
-    var DEV_FORCE_NAV = false;
-    var DEV_MOCK_PATH = false;
-    var DEV_ETA_SEC   = 0;
+    const DEV_FORCE_NAV = false;
+    const DEV_MOCK_PATH = false;
+    const DEV_ETA_SEC   = 0;
 
     /***** 서버 접속 정보 (반드시 교체) *****/
-    var BACKEND_URL = "https://page-paragraphs-pounds-ripe.trycloudflare.com";
-    var API_KEY     = "dev-secret";
+    const BACKEND_URL = "https://mac-supplements-tracking-liable.trycloudflare.com";
+    const API_KEY     = "dev-secret";
 
-    /***** 세션 아이디 (로컬 고정) *****/
-    function getSessionId(){
-      try{
-        var id = localStorage.getItem('SESSION_ID');
-        if(!id){
-          id = 'sess_' + Math.random().toString(16).slice(2) + Date.now().toString(16);
-          localStorage.setItem('SESSION_ID', id);
-        }
-        return id;
-      }catch(e){
-        // 로컬스토리지 불가 환경
-        return 'sess_' + Math.random().toString(16).slice(2) + Date.now().toString(16);
-      }
+    /***** 세션/리스 *****/
+    let SESSION_ID = null;
+    let HEARTBEAT_TIMER = null;
+
+    async function sessionNew(){
+      const r = await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/session/new', {
+        method: 'POST',
+        headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if(!r.ok) throw new Error('session/new failed');
+      const j = await r.json();
+      SESSION_ID = j.session_id;
+      return j;
     }
-    var SESSION_ID = getSessionId();
+    async function sessionClaim(){
+      const r = await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/session/claim', {
+        method: 'POST',
+        headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: SESSION_ID })
+      });
+      if(r.status === 423){ return { ok:false, busy:true, json: await r.json().catch(()=>({})) }; }
+      if(!r.ok) throw new Error('session/claim failed');
+      return { ok:true, ...(await r.json()) };
+    }
+    async function sessionHeartbeat(){
+      try{
+        const r = await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/session/heartbeat', {
+          method: 'POST',
+          headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: SESSION_ID })
+        });
+        // 굳이 실패 처리로 소유권을 해제하진 않음(일시 네트워크에 대비)
+      }catch(e){ /* noop */ }
+    }
+    async function sessionRelease(){
+      if(!SESSION_ID) return;
+      try{
+        await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/session/release', {
+          method: 'POST',
+          headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: SESSION_ID })
+        });
+      }catch(e){ /* noop */ }
+    }
 
     /***** 상태 플래그 *****/
-    var currentFloor=1, pendingTarget=null;
-    var guiding=false, paused=false, pollingTimer=null, activeRoom=null;
-    var summoning=false;            // 소환(복귀 호출)
-    var rendezvous=false;           // 재합류(사용자 위치로 이동)
-    var lastStatus=null;
-    var activeLabel=null;           // 목적지 라벨 보존(도착 모달 표기를 위해)
-    var resumeTarget=null;          // 재합류 후 재안내할 원래 목적지 {code,label}
-    var rendezvousRoom=null;        // 사용자가 입력한 합류 호실
+    let currentFloor=1,pendingTarget=null;
+    let guiding=false, paused=false, pollingTimer=null, activeRoom=null;
+    let summoning=false;
+    let rendezvous=false;
+    let lastStatus=null;
+    let activeLabel=null;
+    let resumeTarget=null;
+    let rendezvousRoom=null;
 
     /***** 호실/라벨 데이터 (정적) *****/
-    var ROOM_INFO={
+    const ROOM_INFO={/* ... 그대로 (질문에 준 데이터 전체 복사) ... */ 
       1:{"101":"정보통신대학 학장실","102":"전자공학과 학과사무실","102-1":"스마트ICT융합공학과 학과사무실","103":"연구용실험실","104":"강의실","105":"연구용실험실","106":"해동학술정보실","107":"강의실","108":"강의실","109":"강의실","110":"강의실","111":"강의실","112":"강의실","113":"강의실","114":"극한반도체 회로/소자 특성분석실","115":"강의실","116":"강의실","117":"강의실","119":"강의실","120":"강의실","121":"강의실","122":"연구용실험실","123":"강의실","124":"멘토링실","125":"공동동아리방","126":"안전공학과 학생회실","127":"강의실","128":"전자공학과 학생회실","129":"정보통신대학 행정실","130":"강의실","131":"외래교수실","132":"정보통신대학 학생쉼터","133":"연구용실험실","134":"강의실","135":"강의실","136":"연구용실험실","137":"연구용실험실"},
       2:{"201":"전자공학과회의실","201-1":"전자공학과 교수휴게실","202":"신일훈 교수연구실","203":"이병한 교수연구실","204":"박형철 교수연구실","205":"권민우 교수연구실","206":"남재원 교수연구실","207":"실습준비실","207-1":"강의실","208":"아날로그전자실험실습실","209":"마이크로프로세서연구실","210":"프로젝트실습실","210-1":"강의실","211":"인공지능연구실","212":"NX연구실","212-1":"운영체제연구실","213":"반도체소자연구실","213-1":"강의실","214":"회로설계연구실","215":"무선통신연구실","216":"종합설계(작업)실","217":"전자기수치해석연구실","218":"전자시뮬레이션실험실습실","219":"컴퓨터구조연구실","220":"컴퓨터구조연구실","221":"지능제어연구실","222":"컴퓨터실","223":"신호처리연구실","223-1":"강의실","224":"최승호 교수연구실","225":"박민기 교수연구실","226":"도현락 교수연구실","227":"경연웅 교수연구실","228":"양성준 교수연구실","229":"이승은 교수연구실","230":"정태호 교수연구실","231":"이예훈 교수연구실","232":"강의실","233":"유비쿼터스컴퓨팅연구실","233-1":"아날로그집적회로설계연구실","234":"유비쿼터스컴퓨팅연구실","235":"종합설계제작실","236":"강의실"},
       3:{"301":"김성권 교수연구실","301-1":"강의실","302":"최현덕 교수연구실","303":"강의실","304":"황병철 교수연구실","305":"이원영 교수연구실","306":"최의민 교수연구실","307":"김화정 교수연구실","308":"영상처리실험실","308-1":"강의실","309":"강의실","309-1":"연구용실험실","309-2":"연구용실험실","310":"교수회의실","311":"멀티미디어회로시스템실험실","312":"ICT회로계측실험실","313":"스마트미디어네트워크실험실","314":"스마트ICT융합공학과 학생회실","315":"기자재실","316":"협동적시스템소프트웨어연구실","317":"멀티미디어실험실","318":"전기전자회로실험실","318-1":"강의실","319":"음향공학실","320":"ICT융합실험실","320-1":"강의실","321":"머신러닝실험실","322":"실감미디어연구실","323":"미디어시뮬레이션실험실","324":"강의실","325":"강의실","326":"강의실","327":"서범준 교수연구실","328":"차병준 교수연구실","329":"이계민 교수연구실","330":"박구만 교수연구실","331":"허성연 교수연구실","332":"정현민 교수연구실","333":"박규태 교수연구실","334":"김동호 교수연구실","334-1":"호수에 오브레곤 교수연구실","335":"전력전자시스템실험실","335-1":"전력전자시스템실험실","336":"로봇지능 및 제어 연구실","337":"집적회로설계실험실","338":"강의실","339":"강의실","340":"강의실","341":"ICT융합공학교육실","342":"ICT공학실험실습실"}
     };
-    var RANGES={1:[101,137],2:[201,235],3:[301,342]};
+    const RANGES={1:[101,137],2:[201,235],3:[301,342]};
 
-    function $(sel){ try { return document.querySelector(sel); } catch(_) { return null; } }
-    function on(id, evt, fn){
-      var el = document.getElementById(id);
-      if (el) el.addEventListener(evt, fn, false);
-    }
+    const $ = (sel)=>document.querySelector(sel);
 
     function showPage(id){
-      var pages = document.querySelectorAll('.page');
-      for(var i=0;i<pages.length;i++){ pages[i].classList.remove('active'); }
-      var el=document.getElementById(id);
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      const el=document.getElementById(id);
       if(el) el.classList.add('active');
-      if(id==='page-home'){ document.body.classList.add('home-active'); }
-      else { document.body.classList.remove('home-active'); }
+      document.body.classList.toggle('home-active', id==='page-home');
     }
     function goHome(){
       stopPolling(); stopMock();
@@ -330,182 +343,168 @@
       setActiveTab(1); showPage('page-home');
     }
     function goBack(){
-      var pg=document.getElementById('page-guide');
-      var pf=document.getElementById('page-floor');
-      var ps=document.getElementById('page-summon');
-      if(pg && pg.classList.contains('active')){ showPage('page-floor'); return; }
-      if(pf && pf.classList.contains('active')) goHome();
-      else if(ps && ps.classList.contains('active')) goHome();
+      if($('#page-guide')?.classList.contains('active')){ showPage('page-floor'); return;}
+      if($('#page-floor')?.classList.contains('active')) goHome();
+      else if($('#page-summon')?.classList.contains('active')) goHome();
       else showPage('page-home');
     }
     function setActiveTab(f){
-      [1,2,3].forEach(function(x){
-        var el=document.getElementById('tab-' + x);
-        if(el) el.classList.toggle('active', x===f);
+      [1,2,3].forEach(x=>{
+        const el=document.getElementById(`tab-${x}`);
+        if(el) el.classList.toggle('active',x===f);
       });
     }
     function startGuide(){ openFloor(1); showPage('page-floor'); }
-    function openFloor(f){
-      currentFloor=f; setActiveTab(f);
-      var tag=document.getElementById('floorTag'); if(tag) tag.textContent=f+'층';
-      buildRoomsForFloor(f);
-    }
+    function openFloor(f){ currentFloor=f; setActiveTab(f); const tag=$('#floorTag'); if(tag) tag.textContent=f+'층'; buildRoomsForFloor(f); }
 
     function addRoomCard(code,label){
-      var c=document.createElement('div'); c.className='room';
-      var num=document.createElement('div'); num.className='num'; num.textContent=code+'호'; c.appendChild(num);
-      var lab=document.createElement('div'); lab.className='label'; lab.textContent=label||''; c.appendChild(lab);
-      c.addEventListener('click', function(){
-        if(code.indexOf('-')>=0){
+      const c=document.createElement('div'); c.className='room';
+      const num=document.createElement('div'); num.className='num'; num.textContent=code+'호'; c.appendChild(num);
+      const lab=document.createElement('div'); lab.className='label'; lab.textContent=label||''; c.appendChild(lab);
+      c.addEventListener('click', ()=>{
+        if(code.includes('-')){
           alert('이 호실은 현재 안내 비활성(백엔드 room:int). 필요시 백엔드를 room:str로 변경하세요.');
           return;
         }
         openConfirm(code,label);
       });
-      var box=document.getElementById('roomList'); if(box) box.appendChild(c);
+      const box=document.getElementById('roomList'); if(box) box.appendChild(c);
     }
     function buildRoomsForFloor(f){
-      var box=document.getElementById('roomList'); if(!box) return;
+      const box=document.getElementById('roomList'); if(!box) return;
       box.innerHTML='';
-      var range=RANGES[f]||[0,-1]; var s=range[0], e=range[1];
-      for(var n=s;n<=e;n++){
-        var code=String(n);
+      const range=RANGES[f]||[0,-1]; const s=range[0], e=range[1];
+      for(let n=s;n<=e;n++){
+        const code=String(n);
         if(ROOM_INFO[f][code]) addRoomCard(code,ROOM_INFO[f][code]);
-        var k, rooms=ROOM_INFO[f];
-        for(k in rooms){
-          if(rooms.hasOwnProperty(k) && k.indexOf(code+"-")===0) addRoomCard(k, rooms[k]);
-        }
+        Object.keys(ROOM_INFO[f]).filter(k=>k.startsWith(code+"-")).forEach(hc=>addRoomCard(hc,ROOM_INFO[f][hc]));
       }
     }
     function filterRooms(){
-      var input=document.getElementById('searchInput'); var box=document.getElementById('roomList');
+      const input=$('#searchInput'); const box=$('#roomList');
       if(!input||!box) return;
-      var q=input.value.trim().toLowerCase();
+      const q=input.value.trim().toLowerCase();
       box.innerHTML='';
       if(!q){ buildRoomsForFloor(currentFloor); return; }
-      Object.keys(ROOM_INFO).forEach(function(fk){
-        var rooms=ROOM_INFO[fk];
-        Object.keys(rooms).forEach(function(code){
-          var label=rooms[code];
-          if(code.toLowerCase().indexOf(q)>=0 || (label && String(label).toLowerCase().indexOf(q)>=0)) addRoomCard(code,label);
+      Object.values(ROOM_INFO).forEach(rooms=>{
+        Object.entries(rooms).forEach(([code,label])=>{
+          if(code.toLowerCase().includes(q) || (label&&label.toLowerCase().includes(q))) addRoomCard(code,label);
         });
       });
     }
-    function clearSearch(){ var i=document.getElementById('searchInput'); if(i){ i.value=''; filterRooms(); } }
+    function clearSearch(){ const i=$('#searchInput'); if(i){ i.value=''; filterRooms(); } }
 
     function openConfirm(code,label){
-      pendingTarget={code:code,label:label};
-      var msg=document.getElementById('confirmMsg'); if(msg) msg.textContent=code+'호 '+(label||'')+' 로 안내할까요?';
-      var wrap=document.getElementById('confirmWrap'); if(wrap){ wrap.classList.add('show'); }
+      pendingTarget={code,label};
+      const msg=$('#confirmMsg'); if(msg) msg.textContent=code+'호 '+(label||'')+' 로 안내할까요?';
+      $('#confirmWrap')?.classList.add('show');
     }
-    function closeConfirm(){ var w=document.getElementById('confirmWrap'); if(w) w.classList.remove('show'); pendingTarget=null; }
+    function closeConfirm(){ $('#confirmWrap')?.classList.remove('show'); pendingTarget=null; }
 
-    function api(path, method, body){
-      method = method || "GET";
-      var url = BACKEND_URL.replace(/\\/+$/,'') + path;
-      var opt={ method:method, headers: { 'x-api-key': API_KEY, 'x-session-id': SESSION_ID } };
+    async function api(path, method="GET", body=null){
+      const url = BACKEND_URL.replace(/\/+$/,'') + path;
+      const opt={ method, headers: { 'x-api-key': API_KEY, 'X-Session-Id': SESSION_ID } };
       if(body){ opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
-      return fetch(url, opt).then(function(r){
-        var ct=r.headers.get('content-type')||'';
-        if(r.status===423){
-          if(ct.indexOf('application/json')>=0){
-            return r.json().then(function(j){ throw new Error('LOCKED:'+(j && j.detail ? j.detail : 'Locked')); });
-          } else {
-            throw new Error('LOCKED:Robot locked by another session');
-          }
-        }
-        if(!r.ok){
-          if(ct.indexOf('application/json')>=0){
-            return r.json().then(function(j){ throw new Error((j && j.detail)? String(j.detail) : ('HTTP '+r.status)); });
-          }
-          throw new Error('HTTP '+r.status);
-        }
-        if(ct.indexOf('application/json')>=0) return r.json();
-        return r.text();
-      });
+      const r=await fetch(url, opt);
+      if(r.status===423){
+        // 다른 사용자가 사용 중
+        setBusyUI(true);
+      }
+      if(!r.ok) throw new Error(method+" "+path+" failed: "+r.status);
+      const ct=r.headers.get('content-type')||'';
+      if(ct.includes('application/json')) return r.json();
+      return r.text();
     }
 
-    function confirmNavigate(){
+    async function confirmNavigate(){
       if(!pendingTarget) return;
-      var yes=document.getElementById('confirmYes'), no=document.getElementById('confirmNo');
-      [yes,no].forEach(function(b){ if(b) b.disabled=true; });
-
-      var target=pendingTarget; closeConfirm();
-
-      api('/api/navigate','POST',{ room: Number(target.code) }).then(function(){
-        activeRoom=target.code;
-        activeLabel=target.label || null;
-        guiding=true; paused=false; summoning=false; rendezvous=false; resumeTarget=null; rendezvousRoom=null;
-        var g=document.getElementById('goalText'); if(g) g.textContent=target.code+'호'+(activeLabel?(' ('+activeLabel+')'):'');
-        var s=document.getElementById('guideStatus'); if(s) s.textContent='안내 시작됨';
-        var pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='정지';
-        showPage('page-guide');
-        startPolling();
-      }).catch(function(e){
-        if(String(e && e.message || '').indexOf('LOCKED:')===0){
-          alert('현재 다른 사용자가 안내를 진행 중입니다. 잠시 후 다시 이용해 주세요.');
-        }else{
-          alert('안내 시작 실패: '+ (e && e.message ? e.message : '알 수 없는 오류'));
-        }
-        [yes,no].forEach(function(b){ if(b) b.disabled=false; });
-      });
+      const yes=$('#confirmYes'), no=$('#confirmNo');
+      [yes,no].forEach(b=>b && (b.disabled=true));
+      const target=pendingTarget; closeConfirm();
+      try{
+        await api('/api/navigate','POST',{ room: Number(target.code) });
+      }catch(e){
+        alert('안내 시작 실패: 서버(또는 사용 중) 상태를 확인하세요.');
+        console.error(e);
+        [yes,no].forEach(b=>b && (b.disabled=false));
+        return;
+      }finally{
+        [yes,no].forEach(b=>b && (b.disabled=false));
+      }
+      activeRoom=target.code;
+      activeLabel=target.label || null;
+      guiding=true; paused=false; summoning=false; rendezvous=false; resumeTarget=null; rendezvousRoom=null;
+      const g=$('#goalText'); if(g) g.textContent=target.code+'호'+(activeLabel?(' ('+activeLabel+')'):'');
+      const s=$('#guideStatus'); if(s) s.textContent='안내 시작됨';
+      const pb=$('#pauseBtn'); if(pb) pb.textContent='정지';
+      showPage('page-guide');
+      startPolling();
     }
 
-    function togglePause(){
+    async function togglePause(){
       if(!guiding) return;
-      var pb=document.getElementById('pauseBtn'), sb=document.getElementById('stopBtn'), lb=document.getElementById('lostBtn');
-      [pb,sb,lb].forEach(function(b){ if(b) b.disabled=true; });
-      var p = paused ? api('/api/resume','POST') : api('/api/stop','POST');
-      p.then(function(){
-        paused = !paused;
-        if(pb) pb.textContent = paused ? '안내 재개' : '정지';
-        var s=document.getElementById('guideStatus'); if(s) s.textContent= paused ? '일시 정지됨' : '안내중';
-      }).catch(function(e){
-        if(String(e && e.message || '').indexOf('LOCKED:')===0){
-          alert('현재 다른 세션이 제어 중입니다.');
-        }else{
-          alert('동작 실패: '+ (e && e.message ? e.message : '연결 상태를 확인하세요.'));
+      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn');
+      [pb,sb,lb].forEach(b=>b && (b.disabled=true));
+      try{
+        if(!paused){
+          await api('/api/stop','POST');
+          paused=true; if(pb) pb.textContent='안내 재개';
+          const s=$('#guideStatus'); if(s) s.textContent='일시 정지됨';
+        } else {
+          await api('/api/resume','POST');
+          paused=false; if(pb) pb.textContent='정지';
+          const s=$('#guideStatus'); if(s) s.textContent='안내중';
         }
-      }).finally(function(){
-        [pb,sb,lb].forEach(function(b){ if(b) b.disabled=false; });
-      });
+      }catch(e){
+        alert('동작 실패(소유권/연결 확인).');
+        console.error(e);
+      }finally{
+        [pb,sb,lb].forEach(b=>b && (b.disabled=false));
+      }
     }
-    function stopGuide(){
-      var pb=document.getElementById('pauseBtn'), sb=document.getElementById('stopBtn'), lb=document.getElementById('lostBtn');
-      [pb,sb,lb].forEach(function(b){ if(b) b.disabled=true; });
-      api('/api/stop','POST').catch(function(e){ console.warn(e); }).finally(function(){
-        guiding=false; paused=false; activeRoom=null; activeLabel=null; rendezvous=false; resumeTarget=null; rendezvousRoom=null;
-        stopPolling(); stopMock(); showPage('page-floor');
-        [pb,sb,lb].forEach(function(b){ if(b) b.disabled=false; });
-      });
+    async function stopGuide(){
+      const pb=$('#pauseBtn'), sb=$('#stopBtn'), lb=$('#lostBtn');
+      [pb,sb,lb].forEach(b=>b && (b.disabled=true));
+      try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
+      guiding=false; paused=false; activeRoom=null; activeLabel=null; rendezvous=false; resumeTarget=null; rendezvousRoom=null;
+      stopPolling(); stopMock(); showPage('page-floor');
+      [pb,sb,lb].forEach(b=>b && (b.disabled=false));
     }
 
     function startPolling(){
       stopPolling();
-      ensureMap().then(function(){ /* noop */ }).catch(function(){ /* noop */ }).finally(function(){
+      ensureMap().finally(()=>{
         pollingTimer=window.setInterval(fetchStatus,1000);
         fetchStatus();
       });
     }
     function stopPolling(){ if(pollingTimer){ clearInterval(pollingTimer); pollingTimer=null; } }
 
-    function fetchStatus(){
-      api('/api/status','GET').then(function(status){
+    async function fetchStatus(){
+      try{
+        const r = await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/status', {
+          headers: { 'x-api-key': API_KEY, 'X-Session-Id': SESSION_ID }
+        });
+        if(r.status===423){
+          setBusyUI(true);
+          return;
+        }
+        if(!r.ok){ throw new Error('status '+r.status); }
+        const status=await r.json();
         lastStatus=status;
 
-        // 소환/재합류 진행 중이면 상태 표시 업데이트
+        // Busy UI 토글
+        setBusyUI(!!status.busy && !status.owned_by_me);
+
         if(summoning || rendezvous){
-          var t=document.getElementById('summonStatus');
+          const t=$('#summonStatus');
           if(t){
-            if(status && status.current) t.textContent = '현재 위치: '+fmtXY(status.current);
+            if(status?.current) t.textContent = '현재 위치: '+fmtXY(status.current);
             else t.textContent = '연결 대기중…';
           }
         }
-
-        // 안내중 UI 갱신
         if(guiding) updateGuideUI(status);
 
-        // 도착 처리
         if(status && status.arrived){
           stopPolling();
           if(summoning){
@@ -516,109 +515,125 @@
             openArrivedModal();
           }
         }
-      }).catch(function(e){
+      }catch(e){
         if(summoning || rendezvous){
-          var t=document.getElementById('summonStatus'); if(t) t.textContent='연결 대기중…';
+          const t=$('#summonStatus'); if(t) t.textContent='연결 대기중…';
         }else{
-          var s=document.getElementById('guideStatus'); if(s) s.textContent='연결 대기중…';
+          const s=$('#guideStatus'); if(s) s.textContent='연결 대기중…';
         }
-      });
+      }
     }
 
-    /* ===== 도착 모달(UI 유지) ===== */
+    function setBusyUI(isBusy){
+      const notice = document.getElementById('busyNotice');
+      const disable = (selList)=> selList.forEach(sel => {
+        const el = document.getElementById(sel);
+        if(el) el.disabled = isBusy;
+      });
+      if(notice) notice.style.display = isBusy ? 'block' : 'none';
+      disable(['btnTogether','btnSummon','pauseBtn','stopBtn','lostBtn','confirmYes']);
+    }
+
+    /* ===== 도착 모달 ===== */
     function openArrivedModal(){
-      var destText = activeRoom ? (activeRoom+'호'+(activeLabel ? (' ('+activeLabel+')') : '')) : '목적지';
-      var wrap = document.getElementById('arrivedWrap');
-      var dest = document.getElementById('arrivedDest');
+      const destText = activeRoom ? `${activeRoom}호${activeLabel ? ` (${activeLabel})` : ''}` : '목적지';
+      const wrap = document.getElementById('arrivedWrap');
+      const dest = document.getElementById('arrivedDest');
       if (wrap && dest) {
         dest.textContent = destText;
         wrap.classList.add('show');
       }
     }
-    function handleArrivedReturn(){
-      fetch(BACKEND_URL.replace(/\\/+$/,'') + '/api/return', {
-        method: 'POST',
-        headers: { 'x-api-key': API_KEY, 'x-session-id': SESSION_ID }
-      }).catch(function(e){ console.warn(e); }).finally(function(){
-        goHome();
-        var w=document.getElementById('arrivedWrap'); if(w) w.classList.remove('show');
-      });
+    async function handleArrivedReturn(){
+      try{
+        await api('/api/return','POST');
+      }catch(e){ console.warn(e); }
+      goHome();
+      document.getElementById('arrivedWrap')?.classList.remove('show');
     }
     function closeArrivedModal(){
-      var w=document.getElementById('arrivedWrap'); if(w) w.classList.remove('show');
+      document.getElementById('arrivedWrap')?.classList.remove('show');
     }
 
     /***** 지도 렌더링 *****/
-    var mapEl=(function(){
-      var c=document.getElementById('mapCanvas');
+    const mapEl=(function(){
+      const c=document.getElementById('mapCanvas');
       if(!c) return null;
       function resize(){
-        var rect=c.getBoundingClientRect();
-        var dpr = window.devicePixelRatio || 1;
+        const rect=c.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
         c.width=Math.max(1, Math.floor(rect.width*dpr));
         c.height=Math.max(1, Math.floor(rect.height*dpr));
       }
-      var ro=new (window.ResizeObserver || function(fn){ this.observe=function(){window.addEventListener('resize',fn);} })(function(){ resize(); drawMap(lastStatus); });
-      try{ ro.observe(c); }catch(e){ window.addEventListener('resize', function(){ resize(); drawMap(lastStatus); }); }
-      resize(); return c;
+      const ro=new ResizeObserver(()=>{ resize(); drawMap(lastStatus); });
+      ro.observe(c); resize(); return c;
     })();
 
-    var _mapImg=null, _mapMeta=null, _screenFit=null;
-    function ensureMap(){
-      if(_mapImg && _mapMeta) return Promise.resolve();
-      return api('/api/map/meta','GET').then(function(meta){
-        _mapMeta = meta;
-        var url = BACKEND_URL.replace(/\\/+$/,'') + '/api/map.png';
-        return new Promise(function(res,rej){
-          var img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload=function(){ _mapImg = img; res(); };
-          img.onerror=function(){ rej(new Error('map image load failed')); };
-          img.src=url;
+    let _mapImg=null, _mapMeta=null, _screenFit=null, _mapObjectURL=null;
+    async function ensureMap(){
+      if(_mapImg && _mapMeta) return;
+      try{
+        // meta
+        const metaR = await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/map/meta', {
+          headers:{'x-api-key': API_KEY, 'X-Session-Id': SESSION_ID}
         });
-      }).catch(function(e){
-        console.warn('map load failed', e);
-      });
+        if(!metaR.ok) throw new Error('map/meta '+metaR.status);
+        _mapMeta = await metaR.json();
+
+        // png (with headers) → blob → ObjectURL
+        const pngR = await fetch(BACKEND_URL.replace(/\/+$/,'') + '/api/map.png', {
+          headers:{'x-api-key': API_KEY, 'X-Session-Id': SESSION_ID}
+        });
+        if(!pngR.ok) throw new Error('map.png '+pngR.status);
+        const blob = await pngR.blob();
+        if(_mapObjectURL) URL.revokeObjectURL(_mapObjectURL);
+        _mapObjectURL = URL.createObjectURL(blob);
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=_mapObjectURL; });
+        _mapImg = img;
+      }catch(e){ console.warn('map load failed', e); }
     }
 
     function computeScreenFit(W,H,iw,ih){
-      var s=Math.min(W/iw, H/ih);
-      var dx=(W - iw*s)/2, dy=(H - ih*s)/2;
-      return {s:s,dx:dx,dy:dy};
+      const s=Math.min(W/iw, H/ih);
+      const dx=(W - iw*s)/2, dy=(H - ih*s)/2;
+      return {s,dx,dy};
     }
     function worldToScreen(pt){
       if(!_mapMeta || !_screenFit) return null;
-      var x=pt[0], y=pt[1];
-      var res=_mapMeta.resolution;
-      var ox=_mapMeta.origin[0], oy=_mapMeta.origin[1];
-      var iw=_mapMeta.width, ih=_mapMeta.height;
-      var px=(x - ox)/res;
-      var py=(y - oy)/res;
+      const [x,y]=pt;
+      const res=_mapMeta.resolution;
+      const ox=_mapMeta.origin[0], oy=_mapMeta.origin[1];
+      const iw=_mapMeta.width, ih=_mapMeta.height;
+      let px=(x - ox)/res;
+      let py=(y - oy)/res;
       py = (ih - 1) - py;
-      var s=_screenFit.s, dx=_screenFit.dx, dy=_screenFit.dy;
-      var X = dx + px*s;
-      var Y = dy + py*s;
+      const {s,dx,dy}=_screenFit;
+      const X = dx + px*s;
+      const Y = dy + py*s;
       return [X,Y];
     }
 
     function updateGuideUI(status){
-      if(status && status.current){ var t=document.getElementById('curPosText'); if(t) t.textContent = fmtXY(status.current); }
-      if(activeRoom){ var g=document.getElementById('goalText'); if(g) g.textContent = activeRoom+'호'+(activeLabel?(' ('+activeLabel+')'):''); }
-      var s=document.getElementById('guideStatus'); if(s) s.textContent = paused ? '일시 정지됨' : '안내중';
+      if(status?.current){ const t=$('#curPosText'); if(t) t.textContent = fmtXY(status.current); }
+      if(activeRoom){ const g=$('#goalText'); if(g) g.textContent = activeRoom+'호'+(activeLabel?(' ('+activeLabel+')'):''); }
+      const s=$('#guideStatus'); if(s) s.textContent = paused ? '일시 정지됨' : '안내중';
       drawMap(status);
     }
 
     function drawMap(status){
       if(!mapEl) return;
-      var c=mapEl, ctx=c.getContext('2d');
-      var dpr = window.devicePixelRatio || 1;
+      const c=mapEl, ctx=c.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
       ctx.save(); ctx.scale(dpr, dpr);
       ctx.clearRect(0,0,c.width, c.height);
-      var W=c.width/dpr, H=c.height/dpr;
+      const W=c.width/dpr, H=c.height/dpr;
 
       if(_mapImg && _mapMeta){
         _screenFit = computeScreenFit(W,H,_mapImg.width,_mapImg.height);
-        var s=_screenFit.s, dx=_screenFit.dx, dy=_screenFit.dy;
+        const {s,dx,dy}=_screenFit;
         ctx.drawImage(_mapImg, dx, dy, _mapImg.width*s, _mapImg.height*s);
       }else{
         ctx.fillStyle='#fafafa'; ctx.fillRect(0,0,W,H);
@@ -631,25 +646,24 @@
         ctx.restore(); return;
       }
 
-      if(status.path && status.path.length>=2){
+      if(Array.isArray(status.path) && status.path.length>=2){
         ctx.lineWidth=3; ctx.strokeStyle='#22c55e';
         ctx.beginPath();
-        for(var i=0;i<status.path.length;i++){
-          var p=status.path[i];
-          var P = worldToScreen(p) || relToScreen(p);
-          if(!P) continue;
+        status.path.forEach(function(p,i){
+          const P = worldToScreen(p) || relToScreen(p);
+          if(!P) return;
           if(i===0) ctx.moveTo(P[0],P[1]); else ctx.lineTo(P[0],P[1]);
-        }
+        });
         ctx.stroke();
       }
 
-      if(status.goal){
-        var G = worldToScreen(status.goal) || relToScreen(status.goal);
+      if(Array.isArray(status.goal)){
+        const G = worldToScreen(status.goal) || relToScreen(status.goal);
         if(G){ ctx.fillStyle='#2563eb'; ctx.beginPath(); ctx.arc(G[0],G[1],6,0,Math.PI*2); ctx.fill(); }
       }
 
-      if(status.current){
-        var C = worldToScreen(status.current) || relToScreen(status.current);
+      if(Array.isArray(status.current)){
+        const C = worldToScreen(status.current) || relToScreen(status.current);
         if(C){ ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(C[0],C[1],6,0,Math.PI*2); ctx.fill(); }
       }
 
@@ -657,119 +671,104 @@
 
       function relToScreen(pt){
         if(!status) return null;
-        var pts=[];
-        if(status.path) status.path.forEach(function(p){ if(p && p.length===2) pts.push(p); });
-        if(status.current) pts.push(status.current);
-        if(status.goal) pts.push(status.goal);
-        var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-        for(var i=0;i<pts.length;i++){
-          var v=pts[i], x=v[0], y=v[1];
-          if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y;
-        }
+        const pts=[];
+        if(Array.isArray(status.path)) status.path.forEach(p=>Array.isArray(p)&&p.length===2&&pts.push(p));
+        if(Array.isArray(status.current)) pts.push(status.current);
+        if(Array.isArray(status.goal)) pts.push(status.goal);
+        let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+        pts.forEach(function(v){ const x=v[0], y=v[1]; if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; });
         if(!isFinite(minX)){ minX=0;minY=0;maxX=10;maxY=10; }
-        var pad=24;
-        var sx=(W-2*pad)/Math.max(1e-6,(maxX-minX));
-        var sy=(H-2*pad)/Math.max(1e-6,(maxY-minY));
-        var s=Math.min(sx,sy);
-        var x=pt[0], y=pt[1];
-        var X = pad + (x-minX)*s;
-        var Y = H - pad - (y-minY)*s;
+        const pad=24;
+        const sx=(W-2*pad)/Math.max(1e-6,(maxX-minX));
+        const sy=(H-2*pad)/Math.max(1e-6,(maxY-minY));
+        const s=Math.min(sx,sy);
+        const x=pt[0], y=pt[1];
+        const X = pad + (x-minX)*s;
+        const Y = H - pad - (y-minY)*s;
         return [X,Y];
       }
     }
-    function fmtXY(p){ if(!p || p.length<2) return '-'; var x=Number(p[0]||0), y=Number(p[1]||0); return x.toFixed(2)+", "+y.toFixed(2); }
+    function fmtXY(p){ if(!Array.isArray(p)) return '-'; const x=Number(p[0]||0), y=Number(p[1]||0); return x.toFixed(2)+", "+y.toFixed(2); }
 
-    var _mockTimer=null;
+    let _mockTimer=null;
     function startMockRun(){}
     function stopMock(){ if(_mockTimer){ clearInterval(_mockTimer); _mockTimer=null; } }
 
     /***** 소환(복귀) 흐름 *****/
-    function startSummon(){
-      api('/api/return','POST').then(function(){
-        summoning=true; guiding=false; paused=false; activeRoom=null; activeLabel=null;
-        rendezvous=false; resumeTarget=null; rendezvousRoom=null;
-        document.getElementById('summonPill').textContent='소환중';
-        document.getElementById('summonTitle').textContent='로봇이 열심히 가고 있어요…';
-        document.getElementById('summonHint').textContent='로봇이 도착하면 목적지를 선택할 수 있어요.';
-        showPage('page-summon');
-        startPolling();
-      }).catch(function(e){
-        if(String(e && e.message || '').indexOf('LOCKED:')===0){
-          alert('현재 다른 사용자가 안내를 진행 중입니다. 잠시 후 다시 이용해 주세요.');
-        }else{
-          alert('로봇 소환 실패: '+(e && e.message ? e.message : '서버 연결 또는 복귀 좌표 설정을 확인하세요.'));
-        }
-      });
+    async function startSummon(){
+      try{
+        await api('/api/return','POST');
+      }catch(e){
+        if(String(e).includes('423')){ alert('현재 다른 사용자가 이용 중입니다.'); return; }
+        alert('로봇 소환 실패: 서버/복귀 좌표 확인');
+        console.error(e);
+        return;
+      }
+      summoning=true; guiding=false; paused=false; activeRoom=null; activeLabel=null;
+      rendezvous=false; resumeTarget=null; rendezvousRoom=null;
+      $('#summonPill').textContent='소환중';
+      $('#summonTitle').textContent='로봇이 열심히 가고 있어요…';
+      $('#summonHint').textContent='로봇이 도착하면 목적지를 선택할 수 있어요.';
+      showPage('page-summon');
+      startPolling();
     }
 
-    /***** 재합류 흐름 *****/
-    function startLostFlow(){
-      api('/api/stop','POST').catch(function(e){ console.warn(e); }).finally(function(){
-        paused=true; guiding=false;
-        var li=document.getElementById('lostInput'); if(li) li.value='';
-        var w=document.getElementById('lostWrap'); if(w) w.classList.add('show');
-      });
+    /***** 재합류(로봇이 보이지 않을 때) 흐름 *****/
+    async function startLostFlow(){
+      try{ await api('/api/stop','POST'); }catch(e){ console.warn(e); }
+      paused=true; guiding=false;
+      $('#lostInput').value='';
+      $('#lostWrap')?.classList.add('show');
     }
-    function closeLostModal(){ var w=document.getElementById('lostWrap'); if(w) w.classList.remove('show'); }
+    function closeLostModal(){ $('#lostWrap')?.classList.remove('show'); }
 
-    function confirmRendezvous(){
-      var li=document.getElementById('lostInput'); var val = (li && li.value || '').trim();
-      if(!/^[0-9]+$/.test(val)){ alert('호실 번호를 숫자로 입력해 주세요. 예: 101'); return; }
-
-      if(activeRoom){ resumeTarget = { code: activeRoom, label: activeLabel || null }; }
-      else { resumeTarget = null; }
+    async function confirmRendezvous(){
+      const val = ($('#lostInput')?.value||'').trim();
+      if(!/^\d+$/.test(val)){ alert('호실 번호를 숫자로 입력해 주세요. 예: 101'); return; }
+      if(activeRoom){ resumeTarget = { code: activeRoom, label: activeLabel || null }; } else { resumeTarget = null; }
       rendezvousRoom = val;
-
       closeLostModal();
-      api('/api/navigate','POST',{ room: Number(val) }).then(function(){
-        summoning=false; rendezvous=true;
-        document.getElementById('summonPill').textContent='재합류중';
-        document.getElementById('summonTitle').textContent='로봇이 '+val+'호 앞으로 이동 중…';
-        document.getElementById('summonHint').textContent='로봇이 도착하면 원래 목적지로 재안내를 시작할 수 있어요.';
-        showPage('page-summon');
-        startPolling();
-      }).catch(function(e){
-        if(String(e && e.message || '').indexOf('LOCKED:')===0){
-          alert('현재 다른 사용자가 안내를 진행 중입니다. 잠시 후 다시 이용해 주세요.');
-        }else{
-          alert('이동 시작 실패: '+(e && e.message ? e.message : '서버 연결 또는 좌표 설정을 확인하세요.'));
-        }
-      });
+      try{
+        await api('/api/navigate','POST',{ room: Number(val) });
+      }catch(e){
+        alert('이동 시작 실패: 서버/좌표/소유권 확인');
+        console.error(e);
+        return;
+      }
+      summoning=false; rendezvous=true;
+      $('#summonPill').textContent='재합류중';
+      $('#summonTitle').textContent=`로봇이 ${val}호 앞으로 이동 중…`;
+      $('#summonHint').textContent='로봇이 도착하면 원래 목적지로 재안내를 시작할 수 있어요.';
+      showPage('page-summon');
+      startPolling();
     }
 
     function openRejoinModal(){
       rendezvous=true;
-      var wrap = document.getElementById('rejoinWrap');
-      var msg = document.getElementById('rejoinMsg');
-      if(msg){
-        if(resumeTarget && resumeTarget.code){
-          msg.textContent = '원래 목적지('+resumeTarget.code+'호'+(resumeTarget.label?(' ('+resumeTarget.label+')'):'')+')로 안내를 다시 시작할까요?';
-        }else{
-          msg.textContent = '원래 목적지가 없습니다. 목적지를 선택하시겠어요?';
-        }
-      }
-      if(wrap){ wrap.classList.add('show'); }
+      $('#rejoinMsg').textContent = resumeTarget
+        ? `원래 목적지(${resumeTarget.code}호${resumeTarget.label?` (${resumeTarget.label})`:''})로 안내를 다시 시작할까요?`
+        : '원래 목적지가 없습니다. 목적지를 선택하시겠어요?';
+      $('#rejoinWrap')?.classList.add('show');
     }
-    function closeRejoinModal(){ var w=document.getElementById('rejoinWrap'); if(w) w.classList.remove('show'); }
+    function closeRejoinModal(){ $('#rejoinWrap')?.classList.remove('show'); }
 
-    function rejoinYes(){
+    async function rejoinYes(){
       closeRejoinModal();
       if(resumeTarget && resumeTarget.code){
-        api('/api/navigate','POST',{ room: Number(resumeTarget.code) }).then(function(){
-          activeRoom = String(resumeTarget.code);
-          activeLabel = resumeTarget.label || null;
-          guiding=true; paused=false; rendezvous=false; summoning=false;
-          var gt=document.getElementById('goalText'); if(gt) gt.textContent = activeRoom+'호'+(activeLabel?(' ('+activeLabel+')'):'');
-          var gs=document.getElementById('guideStatus'); if(gs) gs.textContent = '안내 시작됨';
-          showPage('page-guide');
-          startPolling();
-        }).catch(function(e){
-          if(String(e && e.message || '').indexOf('LOCKED:')===0){
-            alert('현재 다른 사용자가 안내를 진행 중입니다.');
-          }else{
-            alert('재안내 시작 실패: '+(e && e.message ? e.message : '서버 연결을 확인하세요.'));
-          }
-        });
+        try{
+          await api('/api/navigate','POST',{ room: Number(resumeTarget.code) });
+        }catch(e){
+          alert('재안내 시작 실패: 소유권/연결 확인');
+          console.error(e);
+          return;
+        }
+        activeRoom = String(resumeTarget.code);
+        activeLabel = resumeTarget.label || null;
+        guiding=true; paused=false; rendezvous=false; summoning=false;
+        $('#goalText').textContent = activeRoom+'호'+(activeLabel?(' ('+activeLabel+')'):'');
+        $('#guideStatus').textContent = '안내 시작됨';
+        showPage('page-guide');
+        startPolling();
       } else {
         rendezvous=false; summoning=false; guiding=false; paused=false;
         openFloor(1); showPage('page-floor');
@@ -781,48 +780,51 @@
       openFloor(1); showPage('page-floor');
     }
 
-    document.addEventListener('DOMContentLoaded', function(){
-      on('homeBtn','click', goHome);
-      on('backBtn','click', goBack);
+    async function initSessionAndUI(){
+      // 새 세션 생성
+      await sessionNew();
+      // 클레임 시도
+      const c = await sessionClaim();
+      const busy = !c.ok && c.busy;
+      setBusyUI(busy);
+      // 하트비트 시작 (25초 주기)
+      HEARTBEAT_TIMER = setInterval(sessionHeartbeat, 25000);
+      // 언로드 시 release
+      window.addEventListener('beforeunload', sessionRelease);
+    }
 
-      on('btnTogether','click', startGuide);
-      on('btnSummon','click', startSummon);
-
-      on('tab-1','click', function(){ openFloor(1); });
-      on('tab-2','click', function(){ openFloor(2); });
-      on('tab-3','click', function(){ openFloor(3); });
-
-      var si = document.getElementById('searchInput');
-      if (si) si.addEventListener('input', filterRooms, false);
-      on('clearSearchBtn','click', clearSearch);
-
-      on('pauseBtn','click', togglePause);
-      on('stopBtn','click', stopGuide);
-      on('lostBtn','click', startLostFlow);
-
-      on('confirmNo','click', closeConfirm);
-      on('confirmYes','click', confirmNavigate);
-
-      on('arrivedReturn','click', handleArrivedReturn);
-      on('arrivedClose','click', closeArrivedModal);
-
-      on('lostClear','click', function(){
-        var i=document.getElementById('lostInput'); if(i){ i.value=''; i.focus(); }
-      });
-      on('lostCancel','click', closeLostModal);
-      on('lostGo','click', confirmRendezvous);
-      var li = document.getElementById('lostInput');
-      if (li) li.addEventListener('keydown', function(e){ if(e.key==='Enter') confirmRendezvous(); }, false);
-
-      on('rejoinYes','click', rejoinYes);
-      on('rejoinNo','click', rejoinNo);
-
-      // 혹시 남아 있을 수 있는 오버레이 강제 제거
-      var overlays = document.querySelectorAll('.modal-backdrop');
-      for (var i=0;i<overlays.length;i++){ overlays[i].classList.remove('show'); }
-
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      $('#homeBtn')?.addEventListener('click', goHome);
+      $('#backBtn')?.addEventListener('click', goBack);
+      $('#btnTogether')?.addEventListener('click', startGuide);
+      $('#btnSummon')?.addEventListener('click', startSummon);
+      document.getElementById('tab-1')?.addEventListener('click', ()=>openFloor(1));
+      document.getElementById('tab-2')?.addEventListener('click', ()=>openFloor(2));
+      document.getElementById('tab-3')?.addEventListener('click', ()=>openFloor(3));
+      $('#searchInput')?.addEventListener('input', filterRooms);
+      $('#clearSearchBtn')?.addEventListener('click', clearSearch);
+      $('#pauseBtn')?.addEventListener('click', togglePause);
+      $('#stopBtn')?.addEventListener('click', stopGuide);
+      $('#lostBtn')?.addEventListener('click', startLostFlow);
+      $('#confirmNo')?.addEventListener('click', closeConfirm);
+      $('#confirmYes')?.addEventListener('click', confirmNavigate);
+      document.getElementById('arrivedReturn')?.addEventListener('click', handleArrivedReturn);
+      document.getElementById('arrivedClose')?.addEventListener('click', closeArrivedModal);
+      $('#lostClear')?.addEventListener('click', ()=>{ const i=$('#lostInput'); if(i) i.value=''; i?.focus(); });
+      $('#lostCancel')?.addEventListener('click', closeLostModal);
+      $('#lostGo')?.addEventListener('click', confirmRendezvous);
+      $('#lostInput')?.addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmRendezvous(); });
+      $('#rejoinYes')?.addEventListener('click', rejoinYes);
+      $('#rejoinNo')?.addEventListener('click', rejoinNo);
       document.body.classList.add('home-active');
       showPage('page-home');
+
+      try{
+        await initSessionAndUI();
+      }catch(e){
+        alert('세션 초기화 실패: 서버 연결을 확인하세요.');
+        console.error(e);
+      }
     });
   </script>
 </body>
